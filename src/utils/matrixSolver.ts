@@ -78,42 +78,43 @@ export function solveTruss(
     //   soit intégralement reprise en traction par le tirant inférieur sans blocage parasite !
     let assignedRxNodeId: string | null = null;
 
-    // Chercher d'abord un appui explicitement 'pin'
-    const explicitPin = supportNodes.find(n => n.supportType === 'pin');
-    if (explicitPin) {
-      assignedRxNodeId = explicitPin.id;
-    } else if (supportNodes.length > 0) {
-      assignedRxNodeId = supportNodes[0].id;
-    }
-
     nodes.forEach((n, idx) => {
       const baseDof = idx * dofPerNode;
       const isSupportOrBlocked = n.isSupport || n.isBlockedNearSupport;
-      const hasTie = (nodeConnectedTies.get(n.id)?.length ?? 0) > 0;
 
       if (isSupportOrBlocked) {
         if (n.supportType === 'roller_y') {
           // Bloque Rx, glisse en Y
           isDofConstrained[baseDof] = true;
           totalRestraints += 1;
-        } else if (n.id === assignedRxNodeId) {
-          // Appui de référence principal : bloque Rx et Ry
+        } else if (n.supportType === 'pin' || n.isBlockedNearSupport) {
+          // Appui articulé fixe : bloque Rx et Ry
           isDofConstrained[baseDof] = true;     // Rx
           isDofConstrained[baseDof + 1] = true; // Ry
           totalRestraints += 2;
-        } else {
-          // Tout autre appui :
-          // Si le nœud a un tirant ou est un appui de semelle/poutre, bloquer Ry SEUL (rouleau X)
-          // afin de laisser le tirant s'allonger librement et reprendre sa traction !
-          if (hasTie || n.supportType === 'roller_x' || n.isSupport) {
-            isDofConstrained[baseDof + 1] = true; // Ry
+        } else if (n.supportType === 'roller_x') {
+          // Appui rouleau en X : bloque Ry
+          isDofConstrained[baseDof + 1] = true; // Ry
+          totalRestraints += 1;
+
+          // Sécurité physique : si TOUTES les barres connectées à cet appui sont purement verticales (dx = 0),
+          // laisser Rx libre génère une rigidité Kxx = 0 (mécanisme flottant sans résistance).
+          // Dans ce cas, la position X de l'ancrage/appui est physiquement maintenue par le massif/poteau.
+          const connected = members.filter(m => m.fromNodeId === n.id || m.toNodeId === n.id);
+          const hasInclinedOrHoriz = connected.some(m => {
+            const otherId = m.fromNodeId === n.id ? m.toNodeId : m.fromNodeId;
+            const other = nodes.find(on => on.id === otherId);
+            return other && Math.abs(other.x - n.x) > 1e-4;
+          });
+          if (!hasInclinedOrHoriz && connected.length > 0) {
+            isDofConstrained[baseDof] = true; // Rx
             totalRestraints += 1;
-          } else {
-            // Nœud bloqué sans tirant
-            isDofConstrained[baseDof] = true;     // Rx
-            isDofConstrained[baseDof + 1] = true; // Ry
-            totalRestraints += 2;
           }
+        } else {
+          // Appui par défaut sans type spécifié :
+          isDofConstrained[baseDof] = true;     // Rx
+          isDofConstrained[baseDof + 1] = true; // Ry
+          totalRestraints += 2;
         }
       }
     });
@@ -336,9 +337,82 @@ export function solveTruss(
   const U_red = solveLinearSystem(K_red, F_red);
 
   if (!U_red) {
+    // Diagnostic approfondi de la singularité / instabilité
+    const zeroDofNodes: { nodeId: string; dir: string; reason: string }[] = [];
+    for (let i = 0; i < numFree; i++) {
+      if (Math.abs(K_red[i][i]) < 1e-9) {
+        const globDof = freeDofs[i];
+        const nodeIdx = Math.floor(globDof / dofPerNode);
+        const dirIdx = globDof % dofPerNode;
+        const dirName = dimension === '2D' 
+          ? (dirIdx === 0 ? 'X' : 'Y') 
+          : (dirIdx === 0 ? 'X' : dirIdx === 1 ? 'Y' : 'Z');
+        const node = nodes[nodeIdx];
+        if (node) {
+          const connected = members.filter(m => m.fromNodeId === node.id || m.toNodeId === node.id);
+          let reason = '';
+          if (connected.length === 0) {
+            reason = 'aucun membre connecté';
+          } else if (dimension === '2D' && dirName === 'X') {
+            const isAllVert = connected.every(m => {
+              const otherId = m.fromNodeId === node.id ? m.toNodeId : m.fromNodeId;
+              const other = nodes.find(on => on.id === otherId);
+              return other && Math.abs(other.x - node.x) < 1e-4;
+            });
+            if (isAllVert) {
+              reason = 'la seule barre connectée est verticale (dx = 0) et l\'appui glisse en X';
+            } else {
+              reason = 'rigidité axiale nulle selon cet axe';
+            }
+          } else {
+            reason = 'degré de liberté non repris';
+          }
+          zeroDofNodes.push({ nodeId: node.id, dir: dirName, reason });
+        }
+      }
+    }
+
+    const b = members.length;
+    const j = nodes.length;
+    const r = totalRestraints;
+    const req = dimension === '2D' ? 2 * j : 3 * j;
+    const missingBars = Math.max(0, req - (b + r));
+
+    const details: string[] = [];
+    const suggestedFixes: string[] = [];
+    let cause: 'zero_dof_stiffness' | 'underconstrained_truss' | 'general_mechanism' = 'general_mechanism';
+
+    if (zeroDofNodes.length > 0) {
+      cause = 'zero_dof_stiffness';
+      zeroDofNodes.forEach(z => {
+        details.push(`Nœud ${z.nodeId} (axe ${z.dir}) : ${z.reason}.`);
+      });
+      suggestedFixes.push(`Ajouter une barre oblique ou horizontale connectée au nœud ${zeroDofNodes[0].nodeId} pour bloquer son déplacement en ${zeroDofNodes[0].dir}.`);
+      suggestedFixes.push(`Ou modifier l'appui du nœud ${zeroDofNodes[0].nodeId} en appui fixe (pin) pour bloquer son déplacement.`);
+    }
+
+    if (missingBars > 0) {
+      if (cause === 'general_mechanism') cause = 'underconstrained_truss';
+      details.push(`Formule de Maxwell : ${b} barres + ${r} réactions = ${b + r} < ${req} requis pour ${j} nœuds. Il manque au moins ${missingBars} barre(s) pour trianguler le treillis.`);
+      suggestedFixes.push(`Ajouter des diagonales de contreventement pour trianguler les panneaux quadrilatères.`);
+    }
+
+    const summaryMsg = zeroDofNodes.length > 0
+      ? `Instabilité détectée sur le nœud ${zeroDofNodes.map(z => z.nodeId).join(', ')} : ${zeroDofNodes[0].reason}.`
+      : missingBars > 0
+      ? `Treillis sous-contraint : ${b} barres pour ${j} nœuds. Il manque ${missingBars} barre(s) de triangulation.`
+      : 'Système instable ou mécanisme cinématique détecté (matrice de rigidité singulière).';
+
     return {
       success: false,
-      message: 'Système instable ou mécanisme cinématique détecté (matrice de rigidité singulière). Vérifiez le contreventement des barres ou les appuis.',
+      message: summaryMsg,
+      unstableDetails: {
+        cause,
+        problematicNodeIds: zeroDofNodes.map(z => z.nodeId),
+        details,
+        suggestedFixes,
+        missingBarCount: missingBars
+      },
       memberResults: memberResultMap,
       nodeResults: nodeResultMap,
       totalStrainEnergy: 0,
