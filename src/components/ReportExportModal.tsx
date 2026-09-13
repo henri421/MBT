@@ -539,6 +539,9 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
               <span>6. Justification des Nœuds Nodal Zones & Pressions d'Appui (EC2 §6.5.4)</span>
               <span className="text-[10px] text-slate-500 font-normal">CCC : k1=1.0 | CCT : k2=0.85 | CTT : k3=0.75</span>
             </div>
+            <p className="px-4 py-1.5 text-[10px] text-slate-500 bg-slate-50/60 border-b border-slate-200 font-sans">
+              La colonne "Écrasement local (§6.7)" est une vérification additionnelle sous les pieux circulaires (aire partiellement chargée) — elle ne remplace jamais la vérification de nœud ci-dessus.
+            </p>
 
             <table className="w-full text-left font-mono text-[11px]">
               <thead className="bg-slate-50 text-slate-500 text-[10px] border-b border-slate-200">
@@ -549,6 +552,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                   <th className="p-2.5">Pression d'appui σ_b</th>
                   <th className="p-2.5">Aire requise A_req</th>
                   <th className="p-2.5">Aire fournie A_act</th>
+                  <th className="p-2.5">Écrasement local (§6.7)</th>
                   <th className="p-2.5 text-right">Taux de travail</th>
                 </tr>
               </thead>
@@ -574,6 +578,13 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                       <td className="p-2.5 font-bold text-slate-900">{nodeRes.bearingStress.toFixed(2)} MPa</td>
                       <td className="p-2.5 text-slate-700">{nodeRes.requiredBearingArea.toFixed(0)} cm²</td>
                       <td className="p-2.5 text-slate-700">{nodeRes.actualBearingArea.toFixed(0)} cm²</td>
+                      <td className="p-2.5 text-slate-700">
+                        {nodeRes.localBearingLimit !== undefined ? (
+                          <span className={nodeRes.localBearingUtilization! > 1 ? 'text-red-600 font-bold' : 'text-slate-700'}>
+                            σRdu={nodeRes.localBearingLimit.toFixed(1)} MPa ({((nodeRes.localBearingUtilization || 0) * 100).toFixed(0)}%)
+                          </span>
+                        ) : '—'}
+                      </td>
                       <td className="p-2.5 text-right">
                         <span className={`font-bold ${nodeRes.bearingUtilization > 1 ? 'text-red-600' : 'text-emerald-700'}`}>
                           {(nodeRes.bearingUtilization * 100).toFixed(0)}%

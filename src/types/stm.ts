@@ -110,6 +110,8 @@ export interface SolverNodeResult {
   bearingUtilization: number;
   requiredBearingArea: number; // cm²
   actualBearingArea: number; // cm²
+  localBearingLimit?: number; // MPa, EC2 §6.7, pieux circulaires uniquement
+  localBearingUtilization?: number;
   status: 'OK' | 'WARNING' | 'EXCEEDED';
 }
 
