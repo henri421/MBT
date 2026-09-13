@@ -13,12 +13,14 @@ import {
   SteelMaterial
 } from '../types/stm';
 import { COMMERCIAL_DIAMETERS, getBarAreaCm2 } from './rebarCalculator';
+import { calculateStmDimensions } from './dimensionHelper';
 
-interface ExportSvgOptions {
+export interface ExportSvgOptions {
   modelTitle?: string;
   showStrutWidths?: boolean;
   showForceLabels?: boolean;
   showAngles?: boolean;
+  showDimensions?: boolean;
 }
 
 export function generateStmSvg(
@@ -34,7 +36,8 @@ export function generateStmSvg(
     modelTitle = 'Modèle de Bielles et Tirants (STM)',
     showStrutWidths = true,
     showForceLabels = true,
-    showAngles = true
+    showAngles = true,
+    showDimensions = true
   } = options;
 
   // 1. Calcul de la boîte englobante (Bounding Box)
@@ -245,6 +248,43 @@ export function generateStmSvg(
     year: 'numeric'
   });
 
+  // Lignes de cotes techniques automatiques
+  const dimensionSvgs: string[] = [];
+  if (showDimensions) {
+    const dims = calculateStmDimensions(concrete, nodes);
+    for (const d of dims) {
+      if (d.type === 'horizontal' || d.type === 'span') {
+        const x1 = toSvgX(d.x1);
+        const x2 = toSvgX(d.x2);
+        const y = toSvgY(d.y1 + d.offsetM);
+        const yOrig = toSvgY(d.y1);
+        dimensionSvgs.push(`
+          <line x1="${x1}" y1="${yOrig}" x2="${x1}" y2="${y + 6}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2" />
+          <line x1="${x2}" y1="${yOrig}" x2="${x2}" y2="${y + 6}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2" />
+          <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#475569" stroke-width="1.2" />
+          <line x1="${x1 - 4}" y1="${y + 4}" x2="${x1 + 4}" y2="${y - 4}" stroke="#1e293b" stroke-width="1.5" />
+          <line x1="${x2 - 4}" y1="${y + 4}" x2="${x2 + 4}" y2="${y - 4}" stroke="#1e293b" stroke-width="1.5" />
+          <rect x="${(x1 + x2) / 2 - 45}" y="${y - 14}" width="90" height="15" rx="3" fill="#ffffff" fill-opacity="0.95" stroke="#cbd5e1" stroke-width="0.75" />
+          <text x="${(x1 + x2) / 2}" y="${y - 3}" font-size="9" font-family="monospace" font-weight="bold" fill="#0f172a" text-anchor="middle">${d.label}</text>
+        `);
+      } else if (d.type === 'vertical') {
+        const x = toSvgX(d.x1 + d.offsetM);
+        const xOrig = toSvgX(d.x1);
+        const y1 = toSvgY(d.y1);
+        const y2 = toSvgY(d.y2);
+        dimensionSvgs.push(`
+          <line x1="${xOrig}" y1="${y1}" x2="${x - 6}" y2="${y1}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2" />
+          <line x1="${xOrig}" y1="${y2}" x2="${x - 6}" y2="${y2}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2" />
+          <line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#475569" stroke-width="1.2" />
+          <line x1="${x - 4}" y1="${y1 + 4}" x2="${x + 4}" y2="${y1 - 4}" stroke="#1e293b" stroke-width="1.5" />
+          <line x1="${x - 4}" y1="${y2 + 4}" x2="${x + 4}" y2="${y2 - 4}" stroke="#1e293b" stroke-width="1.5" />
+          <rect x="${x - 45}" y="${(y1 + y2) / 2 - 8}" width="90" height="15" rx="3" fill="#ffffff" fill-opacity="0.95" stroke="#cbd5e1" stroke-width="0.75" />
+          <text x="${x}" y="${(y1 + y2) / 2 + 3}" font-size="9" font-family="monospace" font-weight="bold" fill="#0f172a" text-anchor="middle">${d.label}</text>
+        `);
+      }
+    }
+  }
+
   // Cartouche d'ingénierie (Title Block) en bas à droite
   const titleBlockX = svgWidth - 360;
   const titleBlockY = svgHeight - 115;
@@ -353,6 +393,11 @@ export function generateStmSvg(
   <!-- Labels des efforts normaux -->
   <g id="force-labels">
     ${forceLabels.join('\n    ')}
+  </g>
+
+  <!-- Lignes de cotes techniques -->
+  <g id="dimension-lines">
+    ${dimensionSvgs.join('\n    ')}
   </g>
 
   <!-- Légende -->

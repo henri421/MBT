@@ -18,6 +18,7 @@ import { PropertyPanel } from './components/PropertyPanel';
 import { OptimizationModal } from './components/OptimizationModal';
 import { ReportExportModal } from './components/ReportExportModal';
 import { generateStmSvg, downloadSvgFile } from './utils/svgExporter';
+import { downloadDxfFile } from './utils/dxfExporter';
 import { ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface HistorySnapshot {
@@ -83,6 +84,7 @@ export default function App() {
   const [showStrutWidths, setShowStrutWidths] = useState<boolean>(true);
   const [showForceLabels, setShowForceLabels] = useState<boolean>(true);
   const [showAngles, setShowAngles] = useState<boolean>(true);
+  const [showDimensions, setShowDimensions] = useState<boolean>(true);
   const [snapGrid, setSnapGrid] = useState<boolean>(true);
 
   // Modals
@@ -315,6 +317,15 @@ export default function App() {
     downloadSvgFile(svgString, `${cleanName}_schema.svg`);
   }, [nodes, members, concreteOutline, solverResult, concreteMat, steelMat, selectedPresetId]);
 
+  const handleExportDxf = useCallback(() => {
+    const title = PRESETS.find(p => p.id === selectedPresetId)?.title || 'Modele_Bielles_Tirants';
+    const cleanName = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    downloadDxfFile(nodes, members, concreteOutline, solverResult, `${cleanName}_cad.dxf`, {
+      scaleToMm: true,
+      includeDimensions: true
+    });
+  }, [nodes, members, concreteOutline, solverResult, selectedPresetId]);
+
   const handleImportModel = (file: File) => {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -401,6 +412,8 @@ export default function App() {
         onToggleForceLabels={() => setShowForceLabels(!showForceLabels)}
         showAngles={showAngles}
         onToggleAngles={() => setShowAngles(!showAngles)}
+        showDimensions={showDimensions}
+        onToggleDimensions={() => setShowDimensions(!showDimensions)}
         snapGrid={snapGrid}
         onToggleSnapGrid={() => setSnapGrid(!snapGrid)}
         canUndo={historyIndex > 0}
@@ -409,6 +422,7 @@ export default function App() {
         onRedo={handleRedo}
         onExportModel={handleExportModel}
         onExportSvg={handleExportSvg}
+        onExportDxf={handleExportDxf}
         onImportModel={handleImportModel}
         hasSelection={Boolean(selectedNodeId || selectedMemberId)}
         onDeleteSelection={handleDeleteSelection}
@@ -440,6 +454,7 @@ export default function App() {
               showStrutWidths={showStrutWidths}
               showForceLabels={showForceLabels}
               showAngles={showAngles}
+              showDimensions={showDimensions}
               snapGrid={snapGrid}
               gridSize={0.05}
             />

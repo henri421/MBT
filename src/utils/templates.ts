@@ -378,6 +378,7 @@ export const PRESETS: ModelPreset[] = [
         fx: 0,
         fy: -1000, // 1000 kN axiale
         bearingWidth: 0.40,
+        bearingDepth: 0.40,
         nodeType: 'CCC',
         isFixedInOpt: true
       },
@@ -387,10 +388,12 @@ export const PRESETS: ModelPreset[] = [
         y: 0.16,
         isSupport: true,
         supportType: 'pin',
+        bearingShape: 'circular',
+        bearingDiameter: 0.40,
         bearingWidth: 0.40,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       },
       {
         id: 'N_Pile2',
@@ -398,10 +401,12 @@ export const PRESETS: ModelPreset[] = [
         y: 0.16,
         isSupport: true,
         supportType: 'roller_x',
+        bearingShape: 'circular',
+        bearingDiameter: 0.40,
         bearingWidth: 0.40,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       }
     ],
     members: [
@@ -485,10 +490,12 @@ export const PRESETS: ModelPreset[] = [
         z: 0.16,
         isSupport: true,
         supportType: 'pin',
+        bearingShape: 'circular',
+        bearingDiameter: 0.35,
         bearingWidth: 0.35,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       },
       {
         id: 'N_Pile2',
@@ -497,10 +504,12 @@ export const PRESETS: ModelPreset[] = [
         z: 0.16,
         isSupport: true,
         supportType: 'roller_x',
+        bearingShape: 'circular',
+        bearingDiameter: 0.35,
         bearingWidth: 0.35,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       },
       {
         id: 'N_Pile3',
@@ -509,10 +518,12 @@ export const PRESETS: ModelPreset[] = [
         z: 0.16,
         isSupport: true,
         supportType: 'roller_y',
+        bearingShape: 'circular',
+        bearingDiameter: 0.35,
         bearingWidth: 0.35,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       }
     ],
     members: [
@@ -618,10 +629,12 @@ export const PRESETS: ModelPreset[] = [
         z: 0.16,
         isSupport: true,
         supportType: 'pin',
+        bearingShape: 'circular',
+        bearingDiameter: 0.35,
         bearingWidth: 0.35,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       },
       {
         id: 'N_Pile2',
@@ -630,10 +643,12 @@ export const PRESETS: ModelPreset[] = [
         z: 0.16,
         isSupport: true,
         supportType: 'roller_x',
+        bearingShape: 'circular',
+        bearingDiameter: 0.35,
         bearingWidth: 0.35,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       },
       {
         id: 'N_Pile3',
@@ -642,10 +657,12 @@ export const PRESETS: ModelPreset[] = [
         z: 0.16,
         isSupport: true,
         supportType: 'roller_z',
+        bearingShape: 'circular',
+        bearingDiameter: 0.35,
         bearingWidth: 0.35,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       },
       {
         id: 'N_Pile4',
@@ -654,10 +671,12 @@ export const PRESETS: ModelPreset[] = [
         z: 0.16,
         isSupport: true,
         supportType: 'roller_y',
+        bearingShape: 'circular',
+        bearingDiameter: 0.35,
         bearingWidth: 0.35,
         nodeType: 'CCT',
         isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isBlockedNearSupport: false
       }
     ],
     members: [
@@ -1126,6 +1145,461 @@ export const PRESETS: ModelPreset[] = [
         type: 'strut',
         hasTransverseTension: false,
         effectiveWidth: 0.20
+      }
+    ]
+  },
+  {
+    id: 'deep_beam_opening',
+    title: 'Poutre-Cloison avec Trémie (EC2 §9.7)',
+    subtitle: 'Eurocode 2 §9.7 - Contournement de baie par linteau, bielles et étriers de suspension',
+    dimension: '2D',
+    description: 'Modèle Eurocode 2 pour poutre-cloison avec réservation centrale (80x70 cm). La charge supérieure est déviée par un linteau comprimé supérieur, reprise par des étriers verticaux de suspension latéraux, puis acheminée aux appuis par des bielles de trumeau et un tirant inférieur continu.',
+    concrete: {
+      name: 'Poutre-Cloison 3.60 x 2.20 m avec Trémie Centrale',
+      thickness: 0.30,
+      points2D: [
+        [0.0, 0.0],
+        [3.60, 0.0],
+        [3.60, 2.20],
+        [0.0, 2.20]
+      ]
+    },
+    concreteMat: {
+      name: 'C30/37',
+      fck: 30,
+      gammaC: 1.5,
+      alphaCc: 1.0,
+      aggregateSize: 20
+    },
+    steelMat: {
+      name: 'B500B',
+      fyk: 500,
+      gammaS: 1.15,
+      Es: 200
+    },
+    nodes: [
+      {
+        id: 'N_SuppL',
+        x: 0.35,
+        y: 0.16,
+        isSupport: true,
+        supportType: 'pin',
+        bearingWidth: 0.35,
+        nodeType: 'CCT',
+        isFixedInOpt: true,
+        isBlockedNearSupport: true
+      },
+      {
+        id: 'N_SuppR',
+        x: 3.25,
+        y: 0.16,
+        isSupport: true,
+        supportType: 'roller_x',
+        bearingWidth: 0.35,
+        nodeType: 'CCT',
+        isFixedInOpt: true,
+        isBlockedNearSupport: true
+      },
+      {
+        id: 'N_LoadMid',
+        x: 1.80,
+        y: 2.05,
+        fx: 0,
+        fy: -500,
+        bearingWidth: 0.40,
+        nodeType: 'CCC',
+        isFixedInOpt: true
+      },
+      {
+        id: 'N_CornerTopL',
+        x: 0.35,
+        y: 1.65,
+        bearingWidth: 0.30,
+        nodeType: 'CCC',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_PierTopL',
+        x: 1.10,
+        y: 1.65,
+        bearingWidth: 0.30,
+        nodeType: 'CCC',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_PierBotL',
+        x: 1.10,
+        y: 0.16,
+        bearingWidth: 0.30,
+        nodeType: 'CCT',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_CornerTopR',
+        x: 3.25,
+        y: 1.65,
+        bearingWidth: 0.30,
+        nodeType: 'CCC',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_PierTopR',
+        x: 2.50,
+        y: 1.65,
+        bearingWidth: 0.30,
+        nodeType: 'CCC',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_PierBotR',
+        x: 2.50,
+        y: 0.16,
+        bearingWidth: 0.30,
+        nodeType: 'CCT',
+        isFixedInOpt: false
+      }
+    ],
+    members: [
+      {
+        id: 'M_LintelStrut_L',
+        fromNodeId: 'N_LoadMid',
+        toNodeId: 'N_PierTopL',
+        type: 'strut',
+        effectiveWidth: 0.28
+      },
+      {
+        id: 'M_LintelStrut_R',
+        fromNodeId: 'N_LoadMid',
+        toNodeId: 'N_PierTopR',
+        type: 'strut',
+        effectiveWidth: 0.28
+      },
+      {
+        id: 'M_PierStrut_L',
+        fromNodeId: 'N_PierTopL',
+        toNodeId: 'N_SuppL',
+        type: 'strut',
+        effectiveWidth: 0.30
+      },
+      {
+        id: 'M_PierStrut_R',
+        fromNodeId: 'N_PierTopR',
+        toNodeId: 'N_SuppR',
+        type: 'strut',
+        effectiveWidth: 0.30
+      },
+      {
+        id: 'M_ColL_Vert',
+        fromNodeId: 'N_SuppL',
+        toNodeId: 'N_CornerTopL',
+        type: 'strut',
+        effectiveWidth: 0.25
+      },
+      {
+        id: 'M_TopL_Horiz',
+        fromNodeId: 'N_CornerTopL',
+        toNodeId: 'N_PierTopL',
+        type: 'strut',
+        effectiveWidth: 0.25
+      },
+      {
+        id: 'M_DiagL',
+        fromNodeId: 'N_CornerTopL',
+        toNodeId: 'N_PierBotL',
+        type: 'strut',
+        effectiveWidth: 0.22
+      },
+      {
+        id: 'M_HangerL',
+        fromNodeId: 'N_PierTopL',
+        toNodeId: 'N_PierBotL',
+        type: 'tie',
+        barDiameter: 20
+      },
+      {
+        id: 'M_ColR_Vert',
+        fromNodeId: 'N_SuppR',
+        toNodeId: 'N_CornerTopR',
+        type: 'strut',
+        effectiveWidth: 0.25
+      },
+      {
+        id: 'M_TopR_Horiz',
+        fromNodeId: 'N_CornerTopR',
+        toNodeId: 'N_PierTopR',
+        type: 'strut',
+        effectiveWidth: 0.25
+      },
+      {
+        id: 'M_DiagR',
+        fromNodeId: 'N_CornerTopR',
+        toNodeId: 'N_PierBotR',
+        type: 'strut',
+        effectiveWidth: 0.22
+      },
+      {
+        id: 'M_HangerR',
+        fromNodeId: 'N_PierTopR',
+        toNodeId: 'N_PierBotR',
+        type: 'tie',
+        barDiameter: 20
+      },
+      {
+        id: 'M_TieBot_L',
+        fromNodeId: 'N_SuppL',
+        toNodeId: 'N_PierBotL',
+        type: 'tie',
+        barDiameter: 25
+      },
+      {
+        id: 'M_TieBot_Mid',
+        fromNodeId: 'N_PierBotL',
+        toNodeId: 'N_PierBotR',
+        type: 'tie',
+        barDiameter: 25
+      },
+      {
+        id: 'M_TieBot_R',
+        fromNodeId: 'N_PierBotR',
+        toNodeId: 'N_SuppR',
+        type: 'tie',
+        barDiameter: 25
+      }
+    ]
+  },
+  {
+    id: 'frame_corner',
+    title: 'Nœud d\'Angle de Portique (EC2 Annexe J)',
+    subtitle: 'Eurocode 2 Annexe J.4 - Transmission de moment d\'angle, bielle diagonale et tirants d\'armatures',
+    dimension: '2D',
+    description: 'Modèle réglementaire Eurocode 2 Annexe J pour nœud d\'angle de portique soumis à un moment de fermeture. La résultante diagonale de compression intérieure équilibre les tirants extérieurs de poteau et de poutre.',
+    concrete: {
+      name: 'Angle de Cadre Poteau-Poutre 60x60 cm',
+      thickness: 0.35,
+      points2D: [
+        [0.0, 0.0],
+        [0.60, 0.0],
+        [0.60, 1.20],
+        [2.00, 1.20],
+        [2.00, 1.80],
+        [0.0, 1.80]
+      ]
+    },
+    concreteMat: {
+      name: 'C30/37',
+      fck: 30,
+      gammaC: 1.5,
+      alphaCc: 1.0,
+      aggregateSize: 20
+    },
+    steelMat: {
+      name: 'B500B',
+      fyk: 500,
+      gammaS: 1.15,
+      Es: 200
+    },
+    nodes: [
+      {
+        id: 'N_Col_Outer',
+        x: 0.12,
+        y: 0.12,
+        isSupport: true,
+        supportType: 'roller_x',
+        bearingWidth: 0.25,
+        nodeType: 'CCT',
+        isFixedInOpt: true,
+        isBlockedNearSupport: true
+      },
+      {
+        id: 'N_Col_Inner',
+        x: 0.48,
+        y: 0.12,
+        isSupport: true,
+        supportType: 'pin',
+        bearingWidth: 0.25,
+        nodeType: 'CCC',
+        isFixedInOpt: true,
+        isBlockedNearSupport: true
+      },
+      {
+        id: 'N_Col_Mid_Outer',
+        x: 0.12,
+        y: 0.70,
+        bearingWidth: 0.20,
+        nodeType: 'CCT',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_Col_Mid_Inner',
+        x: 0.48,
+        y: 0.70,
+        bearingWidth: 0.20,
+        nodeType: 'CCC',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_Corner_Outer',
+        x: 0.12,
+        y: 1.68,
+        bearingWidth: 0.25,
+        nodeType: 'CCT',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_Corner_Inner',
+        x: 0.48,
+        y: 1.32,
+        bearingWidth: 0.25,
+        nodeType: 'CCC',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_Beam_Mid_Top',
+        x: 1.20,
+        y: 1.68,
+        bearingWidth: 0.20,
+        nodeType: 'CCT',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_Beam_Mid_Bot',
+        x: 1.20,
+        y: 1.32,
+        bearingWidth: 0.20,
+        nodeType: 'CCC',
+        isFixedInOpt: false
+      },
+      {
+        id: 'N_Beam_Tip_Top',
+        x: 1.85,
+        y: 1.68,
+        fx: 0,
+        fy: -200,
+        bearingWidth: 0.20,
+        nodeType: 'CCT',
+        isFixedInOpt: true
+      },
+      {
+        id: 'N_Beam_Tip_Bot',
+        x: 1.85,
+        y: 1.32,
+        bearingWidth: 0.20,
+        nodeType: 'CCC',
+        isFixedInOpt: true
+      }
+    ],
+    members: [
+      {
+        id: 'M_Corner_DiagStrut',
+        fromNodeId: 'N_Corner_Inner',
+        toNodeId: 'N_Corner_Outer',
+        type: 'strut',
+        effectiveWidth: 0.32
+      },
+      {
+        id: 'M_Beam_TopTie1',
+        fromNodeId: 'N_Corner_Outer',
+        toNodeId: 'N_Beam_Mid_Top',
+        type: 'tie',
+        barDiameter: 25
+      },
+      {
+        id: 'M_Beam_TopTie2',
+        fromNodeId: 'N_Beam_Mid_Top',
+        toNodeId: 'N_Beam_Tip_Top',
+        type: 'tie',
+        barDiameter: 25
+      },
+      {
+        id: 'M_Col_OuterTie1',
+        fromNodeId: 'N_Corner_Outer',
+        toNodeId: 'N_Col_Mid_Outer',
+        type: 'tie',
+        barDiameter: 25
+      },
+      {
+        id: 'M_Col_OuterTie2',
+        fromNodeId: 'N_Col_Mid_Outer',
+        toNodeId: 'N_Col_Outer',
+        type: 'tie',
+        barDiameter: 25
+      },
+      {
+        id: 'M_Beam_BotStrut1',
+        fromNodeId: 'N_Corner_Inner',
+        toNodeId: 'N_Beam_Mid_Bot',
+        type: 'strut',
+        effectiveWidth: 0.28
+      },
+      {
+        id: 'M_Beam_BotStrut2',
+        fromNodeId: 'N_Beam_Mid_Bot',
+        toNodeId: 'N_Beam_Tip_Bot',
+        type: 'strut',
+        effectiveWidth: 0.28
+      },
+      {
+        id: 'M_Col_InnerStrut1',
+        fromNodeId: 'N_Corner_Inner',
+        toNodeId: 'N_Col_Mid_Inner',
+        type: 'strut',
+        effectiveWidth: 0.28
+      },
+      {
+        id: 'M_Col_InnerStrut2',
+        fromNodeId: 'N_Col_Mid_Inner',
+        toNodeId: 'N_Col_Inner',
+        type: 'strut',
+        effectiveWidth: 0.28
+      },
+      {
+        id: 'M_Beam_Hanger1',
+        fromNodeId: 'N_Beam_Mid_Top',
+        toNodeId: 'N_Beam_Mid_Bot',
+        type: 'tie',
+        barDiameter: 16
+      },
+      {
+        id: 'M_Beam_Hanger2',
+        fromNodeId: 'N_Beam_Tip_Top',
+        toNodeId: 'N_Beam_Tip_Bot',
+        type: 'tie',
+        barDiameter: 16
+      },
+      {
+        id: 'M_Beam_DiagStrut1',
+        fromNodeId: 'N_Corner_Outer',
+        toNodeId: 'N_Beam_Mid_Bot',
+        type: 'strut',
+        effectiveWidth: 0.22
+      },
+      {
+        id: 'M_Beam_DiagStrut2',
+        fromNodeId: 'N_Beam_Mid_Top',
+        toNodeId: 'N_Beam_Tip_Bot',
+        type: 'strut',
+        effectiveWidth: 0.22
+      },
+      {
+        id: 'M_Col_Stirrup1',
+        fromNodeId: 'N_Col_Mid_Outer',
+        toNodeId: 'N_Col_Mid_Inner',
+        type: 'tie',
+        barDiameter: 16
+      },
+      {
+        id: 'M_Col_DiagStrut1',
+        fromNodeId: 'N_Corner_Inner',
+        toNodeId: 'N_Col_Mid_Outer',
+        type: 'strut',
+        effectiveWidth: 0.22
+      },
+      {
+        id: 'M_Col_DiagStrut2',
+        fromNodeId: 'N_Col_Mid_Inner',
+        toNodeId: 'N_Col_Outer',
+        type: 'strut',
+        effectiveWidth: 0.22
       }
     ]
   },

@@ -7,6 +7,7 @@ import {
   MemberType
 } from '../types/stm';
 import { findBoundaryIntersection } from '../utils/geometryHelpers';
+import { calculateStmDimensions } from '../utils/dimensionHelper';
 import { ZoomIn, ZoomOut, Maximize2, Trash2 } from 'lucide-react';
 
 interface Canvas2DProps {
@@ -27,6 +28,7 @@ interface Canvas2DProps {
   showStrutWidths: boolean;
   showForceLabels: boolean;
   showAngles: boolean;
+  showDimensions?: boolean;
   snapGrid: boolean;
   gridSize: number; // in meters (e.g. 0.05)
 }
@@ -49,6 +51,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   showStrutWidths,
   showForceLabels,
   showAngles,
+  showDimensions = true,
   snapGrid,
   gridSize
 }) => {
@@ -453,7 +456,103 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
               strokeLinejoin="round"
             />
 
-            {/* Cotations des segments du béton */}
+            {/* Lignes de cotes techniques d'ingénierie */}
+            {showDimensions && (
+              <g id="dimension-lines-layer">
+                {calculateStmDimensions(concrete, nodes).map((dim) => {
+                  if (dim.type === 'horizontal' || dim.type === 'span') {
+                    const p1 = worldToScreen(dim.x1, dim.y1 + dim.offsetM);
+                    const p2 = worldToScreen(dim.x2, dim.y2 + dim.offsetM);
+                    const pOrig1 = worldToScreen(dim.x1, dim.y1);
+                    const pOrig2 = worldToScreen(dim.x2, dim.y2);
+                    const midX = (p1.sx + p2.sx) / 2;
+                    const midY = p1.sy;
+
+                    return (
+                      <g key={dim.id} className="pointer-events-none select-none">
+                        {/* Lignes de rappel */}
+                        <line x1={pOrig1.sx} y1={pOrig1.sy} x2={p1.sx} y2={p1.sy + 5} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3,3" />
+                        <line x1={pOrig2.sx} y1={pOrig2.sy} x2={p2.sx} y2={p2.sy + 5} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3,3" />
+                        {/* Ligne de cote principale */}
+                        <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke="#475569" strokeWidth="1.3" />
+                        {/* Ticks à 45° */}
+                        <line x1={p1.sx - 4} y1={p1.sy + 4} x2={p1.sx + 4} y2={p1.sy - 4} stroke="#1e293b" strokeWidth="1.5" />
+                        <line x1={p2.sx - 4} y1={p2.sy + 4} x2={p2.sx + 4} y2={p2.sy - 4} stroke="#1e293b" strokeWidth="1.5" />
+                        {/* Badge texte */}
+                        <rect
+                          x={midX - 38}
+                          y={midY - 18}
+                          width="76"
+                          height="14"
+                          rx="3"
+                          fill="#ffffff"
+                          fillOpacity="0.95"
+                          stroke="#cbd5e1"
+                          strokeWidth="0.75"
+                        />
+                        <text
+                          x={midX}
+                          y={midY - 7}
+                          fill="#0f172a"
+                          fontSize="9.5"
+                          fontFamily="JetBrains Mono, monospace"
+                          fontWeight="700"
+                          textAnchor="middle"
+                        >
+                          {dim.label}
+                        </text>
+                      </g>
+                    );
+                  } else if (dim.type === 'vertical') {
+                    const p1 = worldToScreen(dim.x1 + dim.offsetM, dim.y1);
+                    const p2 = worldToScreen(dim.x2 + dim.offsetM, dim.y2);
+                    const pOrig1 = worldToScreen(dim.x1, dim.y1);
+                    const pOrig2 = worldToScreen(dim.x2, dim.y2);
+                    const midX = p1.sx;
+                    const midY = (p1.sy + p2.sy) / 2;
+
+                    return (
+                      <g key={dim.id} className="pointer-events-none select-none">
+                        {/* Lignes de rappel */}
+                        <line x1={pOrig1.sx} y1={pOrig1.sy} x2={p1.sx - 5} y2={p1.sy} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3,3" />
+                        <line x1={pOrig2.sx} y1={pOrig2.sy} x2={p2.sx - 5} y2={p2.sy} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3,3" />
+                        {/* Ligne de cote principale */}
+                        <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke="#475569" strokeWidth="1.3" />
+                        {/* Ticks à 45° */}
+                        <line x1={p1.sx - 4} y1={p1.sy + 4} x2={p1.sx + 4} y2={p1.sy - 4} stroke="#1e293b" strokeWidth="1.5" />
+                        <line x1={p2.sx - 4} y1={p2.sy + 4} x2={p2.sx + 4} y2={p2.sy - 4} stroke="#1e293b" strokeWidth="1.5" />
+                        {/* Badge texte */}
+                        <rect
+                          x={midX - 42}
+                          y={midY - 8}
+                          width="78"
+                          height="14"
+                          rx="3"
+                          fill="#ffffff"
+                          fillOpacity="0.95"
+                          stroke="#cbd5e1"
+                          strokeWidth="0.75"
+                        />
+                        <text
+                          x={midX - 3}
+                          y={midY + 3}
+                          fill="#0f172a"
+                          fontSize="9.5"
+                          fontFamily="JetBrains Mono, monospace"
+                          fontWeight="700"
+                          textAnchor="middle"
+                        >
+                          {dim.label}
+                        </text>
+                      </g>
+                    );
+                  }
+                  return null;
+                })}
+              </g>
+            )}
+
+            {/* Cotations des segments individuels */}
             {concrete.points2D.map((p, idx) => {
               const nextP = concrete.points2D[(idx + 1) % concrete.points2D.length];
               const dist = Math.hypot(nextP[0] - p[0], nextP[1] - p[1]);
@@ -711,8 +810,44 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
                     strokeDasharray="3,3"
                   />
 
-                  {/* Plaque d'appui sur la face extérieure du béton */}
-                  {!isRollerY ? (
+                  {/* Surface d'appui sur la face extérieure : Plaque rectangulaire ou Pieu circulaire */}
+                  {node.bearingShape === 'circular' ? (
+                    <g>
+                      {/* Tête de pieu et fût descendant */}
+                      <rect
+                        x={bScreen.sx - plateWidthPx / 2}
+                        y={bScreen.sy}
+                        width={plateWidthPx}
+                        height={28}
+                        fill="#cbd5e1"
+                        fillOpacity="0.45"
+                        stroke="#475569"
+                        strokeWidth="1.5"
+                        strokeDasharray="4,2"
+                      />
+                      <ellipse
+                        cx={bScreen.sx}
+                        cy={bScreen.sy}
+                        rx={plateWidthPx / 2}
+                        ry={3.5}
+                        fill="#64748b"
+                        stroke="#1e293b"
+                        strokeWidth="1.2"
+                      />
+                      {/* Indication diamètre pieu */}
+                      <text
+                        x={bScreen.sx}
+                        y={bScreen.sy + 18}
+                        textAnchor="middle"
+                        fill="#1e293b"
+                        fontSize="8.5"
+                        fontFamily="monospace"
+                        fontWeight="bold"
+                      >
+                        ∅{((node.bearingDiameter || node.bearingWidth || 0.40) * 100).toFixed(0)}cm
+                      </text>
+                    </g>
+                  ) : !isRollerY ? (
                     <rect
                       x={bScreen.sx - plateWidthPx / 2}
                       y={bScreen.sy - 3}
