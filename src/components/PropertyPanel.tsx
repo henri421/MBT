@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   STMNode,
   STMMember,
@@ -18,6 +18,8 @@ import {
   findCommercialRebarOptions,
   calculateSuspensionStirrups
 } from '../utils/rebarCalculator';
+import { calculateSkinRebar, checkStrutAngle, checkElsStress } from '../utils/eurocode2';
+import { DirectNumberInput } from './DirectNumberInput';
 import {
   Layers,
   Plus,
@@ -36,7 +38,11 @@ import {
   Copy,
   Check,
   Hash,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Circle,
+  Square,
+  Unlock,
+  Lock
 } from 'lucide-react';
 
 interface PropertyPanelProps {
@@ -86,6 +92,19 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'geometry' | 'nodes' | 'members' | 'materials' | 'rebar'>('geometry');
   const [copiedSchedule, setCopiedSchedule] = useState(false);
+
+  // Auto switch tab when selecting a node or member from canvas
+  useEffect(() => {
+    if (selectedNodeId) {
+      setActiveTab('nodes');
+    }
+  }, [selectedNodeId]);
+
+  useEffect(() => {
+    if (selectedMemberId) {
+      setActiveTab('members');
+    }
+  }, [selectedMemberId]);
 
   // Quick new node state
   const [newNodeX, setNewNodeX] = useState<number>(1.0);
@@ -209,40 +228,50 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 <span className="text-[10px] font-mono font-normal text-slate-500">{concreteOutline.name}</span>
               </h3>
 
-              {/* Epaisseur bw - Saisie directe (sans curseur) */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label htmlFor="input-concrete-thickness" className="text-slate-700 font-semibold text-xs">
+              {/* Epaisseur bw - Saisie directe fluide sans flèche + Presets */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="input-concrete-thickness" className="text-slate-800 font-bold text-xs">
                     Épaisseur du béton bw :
                   </label>
-                  <span className="text-[11px] font-mono text-slate-500 font-bold">
-                    {(concreteOutline.thickness * 100).toFixed(0)} cm
+                  <span className="text-xs font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-bold">
+                    {(concreteOutline.thickness * 100).toFixed(0)} cm ({concreteOutline.thickness.toFixed(2)} m)
                   </span>
                 </div>
-                <div className="relative">
-                  <input
+                <div className="flex items-center gap-2">
+                  <DirectNumberInput
                     id="input-concrete-thickness"
-                    type="number"
-                    step="0.01"
-                    min="0.05"
-                    max="10.00"
+                    unit="m"
+                    min={0.05}
+                    max={10.00}
+                    precision={2}
                     value={concreteOutline.thickness}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val > 0) {
-                        handleUpdateDimensionParam('thickness', val);
-                      }
+                    onChange={(val) => {
+                      if (val > 0) handleUpdateDimensionParam('thickness', val);
                     }}
-                    className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-slate-900 font-mono font-bold text-xs focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-slate-50 hover:bg-white transition-colors"
                     placeholder="0.30"
+                    className="flex-1"
+                    inputClassName="py-1.5 text-sm"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs pointer-events-none font-semibold">
-                    m
-                  </span>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Saisie numérique directe en mètres (ex: 0.35 pour 35 cm, 0.55 pour 55 cm).
-                </p>
+                {/* Boutons de présélection rapide en cm */}
+                <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                  <span className="text-[10px] text-slate-400 font-medium mr-1">Épaisseurs usuelles :</span>
+                  {[0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50, 0.60].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleUpdateDimensionParam('thickness', t)}
+                      className={`px-2 py-0.5 text-[10px] font-mono rounded border transition-colors ${
+                        Math.abs(concreteOutline.thickness - t) < 0.005
+                          ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:border-slate-400'
+                      }`}
+                    >
+                      {(t * 100).toFixed(0)} cm
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Cas type console courte sur poteau */}
@@ -251,43 +280,43 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   <span className="text-[11px] font-bold text-slate-800 block">Paramètres Console Eurocode 2 :</span>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Saillie ac (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="0.45"
-                        onChange={(e) => handleUpdateDimensionParam('corbelLength', parseFloat(e.target.value) || 0.45)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Saillie ac (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={0.45}
+                        onChange={(val) => handleUpdateDimensionParam('corbelLength', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Hauteur totale h (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="0.85"
-                        onChange={(e) => handleUpdateDimensionParam('height', parseFloat(e.target.value) || 0.85)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Hauteur totale h (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={0.85}
+                        onChange={(val) => handleUpdateDimensionParam('height', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Hauteur nez h1 (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="0.50"
-                        onChange={(e) => handleUpdateDimensionParam('corbelTipHeight', parseFloat(e.target.value) || 0.50)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Hauteur nez h1 (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={0.50}
+                        onChange={(val) => handleUpdateDimensionParam('corbelTipHeight', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Poteau b_col (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="0.40"
-                        onChange={(e) => handleUpdateDimensionParam('columnWidth', parseFloat(e.target.value) || 0.40)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Poteau b_col (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={0.40}
+                        onChange={(val) => handleUpdateDimensionParam('columnWidth', val)}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -300,33 +329,33 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   <span className="text-[11px] font-bold text-slate-800 block">Paramètres Console sur Poutre :</span>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Portée poutre L (m)</label>
-                      <input
-                        type="number"
-                        step="0.10"
-                        defaultValue="3.20"
-                        onChange={(e) => handleUpdateDimensionParam('length', parseFloat(e.target.value) || 3.20)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Portée poutre L (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={3.20}
+                        onChange={(val) => handleUpdateDimensionParam('length', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Hauteur poutre H (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="1.20"
-                        onChange={(e) => handleUpdateDimensionParam('height', parseFloat(e.target.value) || 1.20)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Hauteur poutre H (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={1.20}
+                        onChange={(val) => handleUpdateDimensionParam('height', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Saillie console (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="0.60"
-                        onChange={(e) => handleUpdateDimensionParam('corbelLength', parseFloat(e.target.value) || 0.60)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Saillie console (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={0.60}
+                        onChange={(val) => handleUpdateDimensionParam('corbelLength', val)}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -339,23 +368,23 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   <span className="text-[11px] font-bold text-slate-800 block">Paramètres Semelle 2 Pieux :</span>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Longueur L (m)</label>
-                      <input
-                        type="number"
-                        step="0.10"
-                        defaultValue="2.40"
-                        onChange={(e) => handleUpdateDimensionParam('length', parseFloat(e.target.value) || 2.40)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Longueur L (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={2.40}
+                        onChange={(val) => handleUpdateDimensionParam('length', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Hauteur H (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="0.90"
-                        onChange={(e) => handleUpdateDimensionParam('height', parseFloat(e.target.value) || 0.90)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Hauteur H (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={0.90}
+                        onChange={(val) => handleUpdateDimensionParam('height', val)}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -368,23 +397,23 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   <span className="text-[11px] font-bold text-slate-800 block">Paramètres Semelle Spatiale (3D) :</span>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Côté emprise (m)</label>
-                      <input
-                        type="number"
-                        step="0.10"
-                        defaultValue="2.40"
-                        onChange={(e) => handleUpdateDimensionParam('length', parseFloat(e.target.value) || 2.40)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Côté emprise (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={2.40}
+                        onChange={(val) => handleUpdateDimensionParam('length', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Hauteur totale (m)</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        defaultValue="0.90"
-                        onChange={(e) => handleUpdateDimensionParam('height', parseFloat(e.target.value) || 0.90)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Hauteur totale (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={0.90}
+                        onChange={(val) => handleUpdateDimensionParam('height', val)}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -397,23 +426,23 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   <span className="text-[11px] font-bold text-slate-800 block">Paramètres Poutre-Cloison :</span>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Portée L (m)</label>
-                      <input
-                        type="number"
-                        step="0.10"
-                        defaultValue={selectedPresetId === 'deep_beam_eccentric' ? '3.60' : '3.20'}
-                        onChange={(e) => handleUpdateDimensionParam('length', parseFloat(e.target.value) || 3.2)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Portée L (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={selectedPresetId === 'deep_beam_eccentric' ? 3.60 : 3.20}
+                        onChange={(val) => handleUpdateDimensionParam('length', val)}
+                        className="w-full"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-mono block">Hauteur H (m)</label>
-                      <input
-                        type="number"
-                        step="0.10"
-                        defaultValue="2.00"
-                        onChange={(e) => handleUpdateDimensionParam('height', parseFloat(e.target.value) || 2.0)}
-                        className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                      <label className="text-[10px] text-slate-500 font-mono block mb-0.5">Hauteur H (m)</label>
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
+                        value={2.00}
+                        onChange={(val) => handleUpdateDimensionParam('height', val)}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -434,30 +463,32 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                     <span className="text-[10px] font-mono text-slate-500 w-5 font-bold">P{idx + 1}</span>
                     <div className="flex items-center gap-1 flex-1">
                       <span className="text-[10px] text-slate-400 font-mono">X:</span>
-                      <input
-                        type="number"
-                        step="0.05"
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
                         value={pt[0]}
-                        onChange={(e) => {
+                        onChange={(val) => {
                           const newPts = [...concreteOutline.points2D];
-                          newPts[idx] = [parseFloat(e.target.value) || 0, pt[1]];
+                          newPts[idx] = [val, pt[1]];
                           onUpdateConcreteOutline({ ...concreteOutline, points2D: newPts });
                         }}
-                        className="w-full border border-slate-300 rounded px-1 py-0.5 text-[11px] font-mono text-slate-900 focus:outline-none focus:border-red-500"
+                        className="w-full"
+                        inputClassName="py-0.5 text-[11px]"
                       />
                     </div>
                     <div className="flex items-center gap-1 flex-1">
                       <span className="text-[10px] text-slate-400 font-mono">Y:</span>
-                      <input
-                        type="number"
-                        step="0.05"
+                      <DirectNumberInput
+                        unit="m"
+                        precision={2}
                         value={pt[1]}
-                        onChange={(e) => {
+                        onChange={(val) => {
                           const newPts = [...concreteOutline.points2D];
-                          newPts[idx] = [pt[0], parseFloat(e.target.value) || 0];
+                          newPts[idx] = [pt[0], val];
                           onUpdateConcreteOutline({ ...concreteOutline, points2D: newPts });
                         }}
-                        className="w-full border border-slate-300 rounded px-1 py-0.5 text-[11px] font-mono text-slate-900 focus:outline-none focus:border-red-500"
+                        className="w-full"
+                        inputClassName="py-0.5 text-[11px]"
                       />
                     </div>
                     {concreteOutline.points2D.length > 3 && (
@@ -499,22 +530,24 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
               <span className="text-[11px] font-bold text-slate-800 whitespace-nowrap">+ Nœud :</span>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-slate-400 font-mono">X:</span>
-                <input
-                  type="number"
-                  step="0.05"
+                <DirectNumberInput
+                  unit="m"
+                  precision={2}
                   value={newNodeX}
-                  onChange={(e) => setNewNodeX(parseFloat(e.target.value) || 0)}
-                  className="w-14 border border-slate-300 rounded px-1.5 py-0.5 text-xs font-mono text-slate-900"
+                  onChange={(val) => setNewNodeX(val)}
+                  className="w-18"
+                  inputClassName="py-0.5 text-xs"
                 />
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-slate-400 font-mono">Y:</span>
-                <input
-                  type="number"
-                  step="0.05"
+                <DirectNumberInput
+                  unit="m"
+                  precision={2}
                   value={newNodeY}
-                  onChange={(e) => setNewNodeY(parseFloat(e.target.value) || 0)}
-                  className="w-14 border border-slate-300 rounded px-1.5 py-0.5 text-xs font-mono text-slate-900"
+                  onChange={(val) => setNewNodeY(val)}
+                  className="w-18"
+                  inputClassName="py-0.5 text-xs"
                 />
               </div>
               <button
@@ -592,28 +625,30 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                       </button>
                     </div>
 
-                    {/* Coordonnées X / Y éditables directement */}
+                    {/* Coordonnées X / Y éditables directement sans flèche */}
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <div>
-                        <label className="text-[10px] font-mono text-slate-500 block">Position X (m)</label>
-                        <input
-                          type="number"
-                          step="0.05"
+                        <label className="text-[10px] font-mono text-slate-500 block mb-0.5">Position X (m)</label>
+                        <DirectNumberInput
+                          unit="m"
+                          precision={2}
                           value={node.x}
-                          onChange={(e) => onUpdateNode({ ...node, x: parseFloat(e.target.value) || 0 })}
+                          onChange={(val) => onUpdateNode({ ...node, x: val })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                          className="w-full"
+                          inputClassName="py-1 text-xs"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-mono text-slate-500 block">Position Y (m)</label>
-                        <input
-                          type="number"
-                          step="0.05"
+                        <label className="text-[10px] font-mono text-slate-500 block mb-0.5">Position Y (m)</label>
+                        <DirectNumberInput
+                          unit="m"
+                          precision={2}
                           value={node.y}
-                          onChange={(e) => onUpdateNode({ ...node, y: parseFloat(e.target.value) || 0 })}
+                          onChange={(val) => onUpdateNode({ ...node, y: val })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                          className="w-full"
+                          inputClassName="py-1 text-xs"
                         />
                       </div>
                     </div>
@@ -621,7 +656,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                     {/* Ligne 2 : Type d'appui & Charge F */}
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div>
-                        <label className="text-[10px] text-slate-500 block">Condition d'appui</label>
+                        <label className="text-[10px] text-slate-500 block mb-0.5">Condition d'appui</label>
                         <select
                           value={node.isSupport ? node.supportType || 'pin' : 'none'}
                           onChange={(e) => {
@@ -636,75 +671,370 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                           className="w-full border border-slate-300 rounded px-1.5 py-1 text-slate-900 text-xs bg-white focus:outline-none focus:border-red-500"
                         >
                           <option value="none">Libre (Nœud interne)</option>
-                          <option value="pin">Appui Fixe (Pin / Rotule)</option>
-                          <option value="roller_x">Appui Rouleau (Libre X)</option>
-                          <option value="roller_y">Appui Rouleau (Libre Y)</option>
+                          <option value="pin">Appui Fixe / Rotule (Bloque Rx & Ry)</option>
+                          <option value="roller_x">Appui Rouleau X (Libre X, bloque Ry - Tirant)</option>
+                          <option value="roller_y">Appui Rouleau Y (Libre Y, bloque Rx)</option>
+                          <option value="roller_z">Pieu / Rouleau Z (Libre X & Y, bloque Rz)</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="text-[10px] text-slate-500 block">Charge Fy (kN)</label>
-                        <input
-                          type="number"
-                          step="25"
+                        <div className="flex justify-between items-center mb-0.5">
+                          <label className="text-[10px] text-slate-500 block">Charge Fy (kN)</label>
+                          {node.fy && node.fy !== 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateNode({ ...node, fy: 0 });
+                              }}
+                              className="text-[9px] text-slate-400 hover:text-red-600"
+                              title="Annuler la charge"
+                            >
+                              0 kN
+                            </button>
+                          )}
+                        </div>
+                        <DirectNumberInput
+                          unit="kN"
+                          precision={0}
                           value={node.fy || 0}
-                          onChange={(e) => onUpdateNode({ ...node, fy: parseFloat(e.target.value) || 0 })}
+                          onChange={(val) => onUpdateNode({ ...node, fy: val })}
                           onClick={(e) => e.stopPropagation()}
                           placeholder="ex: -350"
-                          className="w-full border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                          className="w-full"
+                          inputClassName="py-1 text-xs font-semibold"
                         />
+                        <div className="flex items-center gap-1 mt-1">
+                          {[-250, -500, -750, -1000].map(c => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateNode({ ...node, fy: c });
+                              }}
+                              className={`px-1 py-0.2 rounded text-[8px] font-mono border transition-colors ${
+                                node.fy === c ? 'bg-red-600 text-white border-red-600 font-bold' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              {c}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Ligne 3 : Largeur de plaque & Verrouillage Schlaich */}
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px]">
-                      <div className="flex items-center gap-1">
-                        <span className="text-slate-500">Plaque a1 (m):</span>
-                        <input
-                          type="number"
-                          step="0.05"
-                          value={node.bearingWidth || 0.20}
-                          onChange={(e) => onUpdateNode({ ...node, bearingWidth: parseFloat(e.target.value) || 0.20 })}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-14 border border-slate-300 rounded px-1 py-0.5 text-slate-900 font-mono text-[10px]"
-                        />
+                    {/* Ligne 3 : Surface d'appui / contact (Directe sans flèche) */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[10px] font-bold text-slate-700">Surface d'appui / contact :</label>
+                        <div className="flex items-center bg-slate-100 p-0.5 rounded border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateNode({ ...node, bearingShape: 'rectangular' });
+                            }}
+                            className={`px-2 py-0.5 text-[10px] rounded font-medium flex items-center gap-1 transition-colors ${
+                              (node.bearingShape !== 'circular') ? 'bg-white shadow-xs text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            <Square size={10} />
+                            <span>Plaque</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateNode({
+                                ...node,
+                                bearingShape: 'circular',
+                                bearingDiameter: node.bearingDiameter || node.bearingWidth || 0.40
+                              });
+                            }}
+                            className={`px-2 py-0.5 text-[10px] rounded font-medium flex items-center gap-1 transition-colors ${
+                              node.bearingShape === 'circular' ? 'bg-white shadow-xs text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            <Circle size={10} />
+                            <span>Pieu rond</span>
+                          </button>
+                        </div>
                       </div>
 
-                      <label className="flex items-center gap-1.5 cursor-pointer text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={node.isFixedInOpt ?? false}
-                          onChange={(e) => onUpdateNode({ ...node, isFixedInOpt: e.target.checked })}
-                          onClick={(e) => e.stopPropagation()}
-                          className="accent-red-600"
-                        />
-                        <span>Verrouillé Schlaich</span>
-                      </label>
-                    </div>
-
-                    {/* Option Nœud bloqué à l'interface d'appui (Rx et Ry bloqués, évite d'ajouter tirants/bielles fictifs) */}
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-medium text-slate-700 hover:text-slate-900">
-                        <input
-                          type="checkbox"
-                          checked={node.isBlockedNearSupport ?? false}
-                          onChange={(e) => onUpdateNode({ ...node, isBlockedNearSupport: e.target.checked })}
-                          onClick={(e) => e.stopPropagation()}
-                          className="accent-teal-600 rounded"
-                        />
-                        <span className="flex items-center gap-1">
-                          <Anchor size={12} className={node.isBlockedNearSupport ? 'text-teal-600' : 'text-slate-400'} />
-                          <span>Bloqué à l'appui (Rx & Ry)</span>
-                        </span>
-                      </label>
-                      {node.isBlockedNearSupport ? (
-                        <span className="text-[9px] font-mono font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200" title="Degrés de liberté bloqués à l'appui">
-                          Évite barres fictives
-                        </span>
+                      {node.bearingShape === 'circular' ? (
+                        <div className="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200 text-[10px] space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-slate-700 font-semibold">Diamètre pieu ∅ :</span>
+                            <div className="flex items-center gap-1">
+                              <DirectNumberInput
+                                unit="m"
+                                min={0.10}
+                                max={3.00}
+                                precision={2}
+                                value={node.bearingDiameter || 0.40}
+                                onChange={(val) => onUpdateNode({
+                                  ...node,
+                                  bearingDiameter: val,
+                                  bearingWidth: val
+                                })}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-24"
+                                inputClassName="text-right py-0.5"
+                              />
+                              <span className="text-slate-500 font-mono text-[10px]">
+                                ({((node.bearingDiameter || 0.40) * 100).toFixed(0)} cm)
+                              </span>
+                            </div>
+                          </div>
+                          {/* Presets rapides de pieux */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[9px] text-slate-400 font-medium">∅ usuels :</span>
+                            {[0.30, 0.35, 0.40, 0.50, 0.60, 0.80].map((d) => (
+                              <button
+                                key={d}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateNode({
+                                    ...node,
+                                    bearingShape: 'circular',
+                                    bearingDiameter: d,
+                                    bearingWidth: d
+                                  });
+                                }}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition-colors ${
+                                  Math.abs((node.bearingDiameter || 0.40) - d) < 0.01
+                                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                ∅{d * 100}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="text-[9px] text-slate-500 font-mono flex justify-between pt-1 border-t border-slate-200/60">
+                            <span>Section Ac :</span>
+                            <span className="font-bold text-slate-800">
+                              {((Math.PI * Math.pow(node.bearingDiameter || 0.40, 2) / 4) * 10000).toFixed(0)} cm²
+                            </span>
+                          </div>
+                        </div>
                       ) : (
-                        <span className="text-[9px] text-slate-400">Pour nœud sur appui</span>
+                        <div className="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200 text-[10px] space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-slate-600 font-medium block mb-1">Longueur a1 :</span>
+                              <DirectNumberInput
+                                unit="m"
+                                min={0.05}
+                                max={5.00}
+                                precision={2}
+                                value={node.bearingWidth || 0.20}
+                                onChange={(val) => onUpdateNode({ ...node, bearingWidth: val })}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="0.20"
+                                className="w-full"
+                                inputClassName="py-0.5"
+                              />
+                              <span className="text-[9px] text-slate-400 font-mono">
+                                {((node.bearingWidth || 0.20) * 100).toFixed(0)} cm
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-600 font-medium block mb-1">Largeur a2 :</span>
+                              <DirectNumberInput
+                                unit="m"
+                                min={0.05}
+                                max={5.00}
+                                precision={2}
+                                value={node.bearingDepth || concreteOutline.thickness || 0.30}
+                                onChange={(val) => onUpdateNode({ ...node, bearingDepth: val })}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="0.30"
+                                className="w-full"
+                                inputClassName="py-0.5"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateNode({ ...node, bearingDepth: concreteOutline.thickness });
+                                }}
+                                className="text-[9px] text-blue-600 hover:text-blue-800 font-mono underline"
+                                title="Définir a2 égal à l'épaisseur du béton"
+                              >
+                                = bw ({(concreteOutline.thickness * 100).toFixed(0)} cm)
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Presets rapides de plaques */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[9px] text-slate-400 font-medium">Plaques usuelles :</span>
+                            {[0.15, 0.20, 0.25, 0.30, 0.40].map((dim) => (
+                              <button
+                                key={dim}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateNode({
+                                    ...node,
+                                    bearingShape: 'rectangular',
+                                    bearingWidth: dim,
+                                    bearingDepth: node.bearingDepth || concreteOutline.thickness || dim
+                                  });
+                                }}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-mono border transition-colors ${
+                                  Math.abs((node.bearingWidth || 0.20) - dim) < 0.01
+                                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {dim * 100} cm
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 font-mono text-[9px]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-500">Aire contact Ac :</span>
+                              <span className="font-bold text-slate-800">
+                                {(((node.bearingWidth || 0.20) * (node.bearingDepth || concreteOutline.thickness || 0.30)) * 10000).toFixed(0)} cm²
+                              </span>
+                            </div>
+                            <label className="flex items-center gap-1 cursor-pointer text-slate-600">
+                              <input
+                                type="checkbox"
+                                checked={node.isFixedInOpt ?? false}
+                                onChange={(e) => onUpdateNode({ ...node, isFixedInOpt: e.target.checked })}
+                                onClick={(e) => e.stopPropagation()}
+                                className="accent-red-600"
+                              />
+                              <span>Fixe Schlaich</span>
+                            </label>
+                          </div>
+                        </div>
                       )}
                     </div>
+
+                    {/* Option Nœud bloqué à l'interface d'appui & Détection de tirant */}
+                    {(() => {
+                      const connectedTies = members.filter(m => m.type === 'tie' && (m.fromNodeId === node.id || m.toNodeId === node.id));
+                      const hasTie = connectedTies.length > 0;
+                      const isOverConstrainedWithTie = hasTie && (node.isBlockedNearSupport || (node.isSupport && node.supportType === 'pin'));
+
+                      return (
+                        <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                              <Anchor size={12} className={node.isBlockedNearSupport ? 'text-teal-600' : 'text-slate-400'} />
+                              <span>Comportement horizontal à l'appui :</span>
+                            </span>
+                            {hasTie && (
+                              <span className="text-[9px] font-medium bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                <CheckCircle2 size={10} />
+                                <span>Tirant relié</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Sélecteur intuitif : Libre en X vs Bloqué */}
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateNode({
+                                  ...node,
+                                  isBlockedNearSupport: false,
+                                  supportType: node.isSupport ? 'roller_x' : node.supportType
+                                });
+                              }}
+                              className={`p-1.5 rounded-lg border text-left transition-all ${
+                                !node.isBlockedNearSupport && (node.supportType === 'roller_x' || !node.isSupport || !node.supportType)
+                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900 ring-1 ring-emerald-400/50'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 font-semibold text-[10px]">
+                                <Unlock size={11} className={!node.isBlockedNearSupport ? 'text-emerald-600' : 'text-slate-400'} />
+                                <span>Libre en X (Tirant)</span>
+                              </div>
+                              <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
+                                Glisse horizontalement pour transmettre la traction au tirant
+                              </p>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateNode({
+                                  ...node,
+                                  isBlockedNearSupport: true,
+                                  supportType: node.isSupport ? 'pin' : node.supportType
+                                });
+                              }}
+                              className={`p-1.5 rounded-lg border text-left transition-all ${
+                                node.isBlockedNearSupport || (node.isSupport && node.supportType === 'pin')
+                                  ? 'bg-amber-50 border-amber-300 text-amber-900 ring-1 ring-amber-400/50'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 font-semibold text-[10px]">
+                                <Lock size={11} className={node.isBlockedNearSupport ? 'text-amber-600' : 'text-slate-400'} />
+                                <span>Bloqué Rx & Ry</span>
+                              </div>
+                              <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
+                                Appui rigide qui absorbe toute la poussée horizontale
+                              </p>
+                            </button>
+                          </div>
+
+                          {/* Avertissement intelligent si un tirant est connecté à un appui bloqué */}
+                          {isOverConstrainedWithTie && (
+                            <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] text-amber-900">
+                              <div className="flex items-start gap-1.5">
+                                <AlertTriangle size={13} className="text-amber-600 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <div className="font-bold text-amber-800 flex items-center justify-between">
+                                    <span>Tirant {connectedTies.map(t => t.id).join(', ')} bloqué !</span>
+                                    <span className="text-[9px] font-semibold bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded">Traction N = 0</span>
+                                  </div>
+                                  <p className="text-[9px] text-amber-700 mt-0.5 leading-tight">
+                                    L'appui rigide bloque le déplacement horizontal et court-circuite le tirant. Libérez le glissement en X pour activer la traction.
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onUpdateNode({
+                                        ...node,
+                                        isBlockedNearSupport: false,
+                                        supportType: 'roller_x'
+                                      });
+                                    }}
+                                    className="mt-1.5 px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-medium text-[10px] shadow-xs inline-flex items-center gap-1 transition-colors"
+                                  >
+                                    <Unlock size={11} />
+                                    <span>Débloquer en X (Activer la traction du tirant)</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {hasTie && !isOverConstrainedWithTie && (
+                            <div className="text-[9px] text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5">
+                              <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                              <span>Tirant {connectedTies.map(t => t.id).join(', ')} actif : l'appui glisse librement pour reprendre 100% de la poussée en traction.</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Résultats EC2 si nœud chargé ou en appui */}
                     {nodeRes && (
@@ -879,6 +1209,38 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                             {isComp ? `${mRes.effectiveWidthRequired.toFixed(0)} mm` : `${mRes.requiredAs?.toFixed(2)} cm²`}
                           </span>
                         </div>
+
+                        {/* Diagnostic Bielle EC2: Angle θ */}
+                        {isComp && (() => {
+                          const fn = nodes.find(n => n.id === m.fromNodeId);
+                          const tn = nodes.find(n => n.id === m.toNodeId);
+                          if (!fn || !tn) return null;
+                          const deg = (Math.atan2(Math.abs(tn.y - fn.y), Math.abs(tn.x - fn.x)) * 180) / Math.PI;
+                          const diag = checkStrutAngle(deg);
+                          return (
+                            <div className="col-span-2 flex items-center justify-between pt-1 border-t border-slate-200 text-[9.5px]">
+                              <span>Angle θ : <strong className="text-slate-800">{deg.toFixed(1)}°</strong> (cot={diag.cotTheta.toFixed(2)})</span>
+                              <span className={`px-1.5 py-0.2 rounded font-bold ${diag.status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {diag.status === 'VALID' ? 'EC2 Conforme' : diag.status === 'WARNING_LOW' ? 'θ < 30° (Schlaich)' : 'Non conforme'}
+                              </span>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Diagnostic Tirant ELS EC2: σ_s ≤ 400 MPa */}
+                        {!isComp && (() => {
+                          const asProv = mRes.providedAs || (mRes.requiredAs ? mRes.requiredAs * 1.15 : 4.0);
+                          const els = checkElsStress(mRes.force, asProv, steelMat.fyk);
+                          return (
+                            <div className="col-span-2 flex items-center justify-between pt-1 border-t border-slate-200 text-[9.5px]">
+                              <span>Contrainte ELS : <strong className={els.isOk ? 'text-slate-800' : 'text-red-600'}>{els.sigmaS_Els.toFixed(0)} MPa</strong></span>
+                              <span className={`px-1.5 py-0.2 rounded font-bold ${els.isOk ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                                {els.isOk ? 'σs ≤ 400 MPa OK' : 'σs > 400 MPa Fissuration'}
+                              </span>
+                            </div>
+                          );
+                        })()}
+
                         {!isComp && mRes.suggestedRebar && (
                           <div className="col-span-2 text-slate-700">
                             <span>Conseil : </span>
@@ -1321,6 +1683,44 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                             Disposition conforme EC2 :
                           </span>
                           <span>{prop?.label || 'Étriers HA 8 e = 15 cm'}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Armatures de Peau Minimales (EC2 §9.7.1 & §7.3) */}
+                  {(() => {
+                    const ys = concreteOutline.points2D.map(p => p[1]);
+                    const elemHeightM = ys.length > 0 ? Math.max(...ys) - Math.min(...ys) : 1.5;
+                    const skin = calculateSkinRebar(concreteOutline.thickness, elemHeightM, concreteMat.fck, steelMat.fyk);
+
+                    return (
+                      <div className="border border-slate-200 rounded-lg p-3 bg-white space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                            <ShieldCheck size={14} className="text-indigo-600" />
+                            <span>Armatures de Peau & Fissuration</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                            EC2 §9.7.1
+                          </span>
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 leading-snug">
+                          Maillage surfacique minimal par face (0.10% Ac) pour maîtriser la fissuration superficielle :
+                        </p>
+                        <div className="bg-slate-50 p-2 rounded border border-slate-200 grid grid-cols-2 gap-2 text-[11px] font-mono">
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Section requise / face :</span>
+                            <span className="font-bold text-slate-900">{skin.asMinPerFaceCm2PerM.toFixed(2)} cm²/m</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block text-[10px]">Espacement maximal :</span>
+                            <span className="font-bold text-slate-900">s_max ≤ {skin.maxSpacingMm} mm</span>
+                          </div>
+                        </div>
+                        <div className="p-2 bg-indigo-50/70 border border-indigo-200 rounded text-[11px] text-indigo-950 font-medium">
+                          <span className="font-bold text-[10px] text-indigo-800 uppercase block">Recommandation chantier :</span>
+                          <span>{skin.suggestedMesh}</span>
                         </div>
                       </div>
                     );

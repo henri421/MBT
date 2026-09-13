@@ -14,6 +14,8 @@ export interface STMNode {
   fy?: number;
   fz?: number;
   // Bearing plate / support dimensions (meters)
+  bearingShape?: 'rectangular' | 'circular';
+  bearingDiameter?: number; // meters (e.g. 0.40 for 40cm circular pile or column)
   bearingWidth?: number; // a1 (length along member/support)
   bearingDepth?: number; // a2 (out of plane, defaults to beam width)
   // Calculated or assigned node type
