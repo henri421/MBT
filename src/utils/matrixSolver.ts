@@ -540,7 +540,7 @@ export function solveTruss(
     const sumFz = (n.fz || 0) + rz - (nf ? nf.fz : 0);
     const residual = Math.sqrt(sumFx * sumFx + sumFy * sumFy + sumFz * sumFz);
 
-    // Auto classify node type (CCC, CCT, CTT, TTT) based on incident member forces
+    // Auto classify node type (CCC, CCT, CTT) based on incident member forces
     let tensionCount = 0;
     let compressionCount = 0;
     if (nf) {
@@ -553,8 +553,7 @@ export function solveTruss(
     let detectedType: NodeType = 'CCC';
     if (tensionCount === 0) detectedType = 'CCC';
     else if (tensionCount === 1) detectedType = 'CCT';
-    else if (tensionCount === 2) detectedType = 'CTT';
-    else if (tensionCount >= 3) detectedType = 'TTT';
+    else detectedType = 'CTT'; // EC2 6.5.4 ne distingue pas au-delà de 2 tirants ancrés
 
     const finalNodeType = (n.nodeType && n.nodeType !== 'AUTO') ? n.nodeType : detectedType;
 
