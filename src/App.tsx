@@ -19,7 +19,7 @@ import { OptimizationModal } from './components/OptimizationModal';
 import { ReportExportModal } from './components/ReportExportModal';
 import { generateStmSvg, downloadSvgFile } from './utils/svgExporter';
 import { downloadDxfFile } from './utils/dxfExporter';
-import { ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShieldAlert, ChevronLeft, ChevronRight, Wrench, Info, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface HistorySnapshot {
   nodes: STMNode[];
@@ -91,6 +91,64 @@ export default function App() {
   const [isOptimizerOpen, setIsOptimizerOpen] = useState<boolean>(false);
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState<boolean>(false);
+  const [showInstabilityDetails, setShowInstabilityDetails] = useState<boolean>(false);
+
+  // Auto-stabilisation pour treillis sous-contraint ou appui libre
+  const handleAddMissingCorbelBars = () => {
+    const newMembers = [...members];
+    let changed = false;
+
+    // Ajouter tirant de liaison inférieur N4 - N5
+    const hasN4N5 = newMembers.some(
+      m => (m.fromNodeId === 'N4' && m.toNodeId === 'N5') || (m.fromNodeId === 'N5' && m.toNodeId === 'N4')
+    );
+    if (!hasN4N5 && nodes.some(n => n.id === 'N4') && nodes.some(n => n.id === 'N5')) {
+      newMembers.push({
+        id: `M_col_bot_${Date.now()}`,
+        fromNodeId: 'N4',
+        toNodeId: 'N5',
+        type: 'tie',
+        barDiameter: 20
+      });
+      changed = true;
+    }
+
+    // Ajouter bielle diagonale de contreventement N2 - N5
+    const hasN2N5 = newMembers.some(
+      m => (m.fromNodeId === 'N2' && m.toNodeId === 'N5') || (m.fromNodeId === 'N5' && m.toNodeId === 'N2')
+    );
+    if (!hasN2N5 && nodes.some(n => n.id === 'N2') && nodes.some(n => n.id === 'N5')) {
+      newMembers.push({
+        id: `M_col_diag_${Date.now() + 1}`,
+        fromNodeId: 'N2',
+        toNodeId: 'N5',
+        type: 'strut',
+        hasTransverseTension: true,
+        effectiveWidth: 0.20
+      });
+      changed = true;
+    }
+
+    if (changed) {
+      setMembers(newMembers);
+      pushHistory(nodes, newMembers);
+    }
+  };
+
+  const handleFixSupportDof = (nodeId: string) => {
+    const nextNodes = nodes.map(n => {
+      if (n.id === nodeId) {
+        return {
+          ...n,
+          supportType: 'pin' as const,
+          isBlockedNearSupport: true
+        };
+      }
+      return n;
+    });
+    setNodes(nextNodes);
+    pushHistory(nextNodes, members);
+  };
 
   // Reactive Solver Computation
   const solverResult = useMemo(() => {
@@ -481,11 +539,83 @@ export default function App() {
             </p>
           </div>
 
-          {/* Solver Warnings Banner */}
+          {/* Solver Warnings & Instability Diagnosis Banner */}
           {!solverResult.isStable && solverResult.message && (
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-red-50 border border-red-300 rounded-lg px-4 py-2 text-xs text-red-800 flex items-center gap-2 shadow-md z-10">
-              <ShieldAlert size={16} className="text-red-600 flex-shrink-0" />
-              <span>{solverResult.message}</span>
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white border-2 border-red-500 rounded-xl p-3.5 text-xs text-slate-800 shadow-2xl z-30 max-w-lg w-[92%] sm:w-auto animate-in fade-in slide-in-from-bottom-3 duration-200">
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-red-100 rounded-lg text-red-700 shrink-0 mt-0.5">
+                  <ShieldAlert size={18} />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-red-900 text-xs tracking-tight">
+                      Rigidité Singulière — Mécanisme Détecté
+                    </span>
+                    <button
+                      onClick={() => setShowInstabilityDetails(!showInstabilityDetails)}
+                      className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 hover:underline cursor-pointer"
+                    >
+                      <Info size={13} />
+                      <span>{showInstabilityDetails ? 'Moins de détails' : 'Comprendre l’erreur'}</span>
+                      {showInstabilityDetails ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                  </div>
+
+                  <p className="text-slate-700 text-xs leading-relaxed">
+                    {solverResult.message}
+                  </p>
+
+                  {/* Expandable Explanation Details */}
+                  {showInstabilityDetails && (
+                    <div className="mt-2 pt-2 border-t border-red-100 space-y-2 bg-red-50/60 p-2.5 rounded-lg text-[11px]">
+                      <div className="font-bold text-red-900">Origine physique du blocage :</div>
+                      <ul className="list-disc list-inside space-y-1 text-slate-700">
+                        {solverResult.unstableDetails?.details && solverResult.unstableDetails.details.length > 0 ? (
+                          solverResult.unstableDetails.details.map((d, i) => (
+                            <li key={i}>{d}</li>
+                          ))
+                        ) : (
+                          <>
+                            <li>Un ou plusieurs nœuds peuvent glisser ou tourner librement sans résistance élastique.</li>
+                            <li>Les barres existantes ne forment pas des triangles indéformables (forme quadrilatère déformable).</li>
+                          </>
+                        )}
+                        {nodes.some(n => n.id === 'N4' && n.supportType === 'roller_x') && !members.some(m => (m.fromNodeId === 'N4' && m.toNodeId === 'N5') || (m.fromNodeId === 'N5' && m.toNodeId === 'N4')) && (
+                          <li className="text-amber-800 font-medium">
+                            Le nœud N4 est sur appui rouleau (libre en X) avec une seule barre verticale raccordée : rien ne retient N4 horizontalement !
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Quick Fix Actions */}
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    {/* Bouton pour rétablir la triangulation poteau/console */}
+                    {nodes.some(n => n.id === 'N4') && nodes.some(n => n.id === 'N5') && (
+                      <button
+                        onClick={handleAddMissingCorbelBars}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors cursor-pointer"
+                        title="Ajoute la barre inférieure N4-N5 et la diagonale de contreventement N2-N5 pour stabiliser le treillis"
+                      >
+                        <Wrench size={13} />
+                        <span>Stabiliser (Ajouter N4-N5 & diagonale N2-N5)</span>
+                      </button>
+                    )}
+
+                    {/* Bouton pour bloquer l'appui N4 en X */}
+                    {solverResult.unstableDetails?.problematicNodeIds?.includes('N4') && (
+                      <button
+                        onClick={() => handleFixSupportDof('N4')}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-lg border border-slate-300 transition-colors cursor-pointer"
+                        title="Change l'appui N4 en appui fixe bloqué en X et Y"
+                      >
+                        <span>Bloquer appui N4 en X (Articulé)</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
