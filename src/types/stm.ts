@@ -1,6 +1,6 @@
 export type DimensionMode = '2D' | '3D';
 
-export type NodeType = 'CCC' | 'CCT' | 'CTT' | 'TTT' | 'AUTO';
+export type NodeType = 'CCC' | 'CCT' | 'CTT' | 'AUTO';
 
 export interface STMNode {
   id: string;

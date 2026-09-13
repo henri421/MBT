@@ -32,7 +32,7 @@ export interface EurocodeNodeCheckResult {
   notes: string;
 }
 
-// Available standard French rebar configurations (B500B)
+// Sections d'armatures HA commerciales (géométriques, indépendantes de la nuance d'acier)
 const REBAR_TABLE = [
   { desc: '2 HA 12', asCm2: 2.26 },
   { desc: '2 HA 14', asCm2: 3.08 },
@@ -121,10 +121,9 @@ export function checkEurocodeMember(
     };
   } else {
     // EN 1992-1-1 6.5.2: Bielles de compression (Struts)
-    // 6.5.2(1) without transverse tension: sigma_Rd,max = 1.0 * nu' * fcd
-    // 6.5.2(2) with transverse tension: sigma_Rd,max = 0.6 * nu' * fcd
-    const kFactor = member.hasTransverseTension ? 0.6 : 1.0;
-    const sigmaRdMax = kFactor * nuPrime * fcd; // MPa
+    // 6.5.2(1) sans traction transversale : sigma_Rd,max = fcd (pas de facteur nu' au 6.5.2)
+    // 6.5.2(2) avec traction transversale (bielle fissurée) : sigma_Rd,max = 0.6 * nu' * fcd
+    const sigmaRdMax = member.hasTransverseTension ? 0.6 * nuPrime * fcd : fcd; // MPa
 
     // Required effective width ws,req = Fcd / (bw * sigmaRdMax)
     // bw in meters, sigma in MPa = 1000 kN/m²
@@ -143,8 +142,8 @@ export function checkEurocodeMember(
     const status = util > 1.0 ? 'EXCEEDED' : util > 0.9 ? 'WARNING' : 'OK';
 
     const regimeDesc = member.hasTransverseTension
-      ? 'Bielle fissurée (avec traction transversale, k=0.6)'
-      : 'Bielle comprimée standard (k=1.0)';
+      ? 'Bielle fissurée (avec traction transversale, σRd,max = 0.6·ν´·fcd)'
+      : 'Bielle comprimée standard (σRd,max = fcd)';
 
     return {
       stress: actualStressMpa,
@@ -175,13 +174,12 @@ export function checkEurocodeNode(
   // EN 1992-1-1 6.5.4: Nodal zones stress limits
   // CCC: k1 = 1.0 => sigma_Rd,max = 1.0 * nu' * fcd
   // CCT: k2 = 0.85 => sigma_Rd,max = 0.85 * nu' * fcd
-  // CTT: k3 = 0.75 => sigma_Rd,max = 0.75 * nu' * fcd
-  // TTT: concrete does not transmit compression directly
+  // CTT: k3 = 0.75 => sigma_Rd,max = 0.75 * nu' * fcd (couvre aussi les nœuds à 3+ tirants,
+  //   non distingués par l'EC2 qui ne définit que ces trois catégories)
   let kFactor = 1.0;
   if (nodeType === 'CCC') kFactor = 1.0;
   else if (nodeType === 'CCT') kFactor = 0.85;
   else if (nodeType === 'CTT') kFactor = 0.75;
-  else if (nodeType === 'TTT') kFactor = 0.65;
 
   const designStressLimit = kFactor * nuPrime * fcd; // MPa
 
@@ -284,41 +282,52 @@ export function calculateSkinRebar(
 
 export interface StrutAngleDiagnostic {
   angleDeg: number;
-  status: 'VALID' | 'WARNING_LOW' | 'INVALID_LOW' | 'WARNING_HIGH';
+  status: 'VALID' | 'WARNING_LOW' | 'WARNING_HIGH' | 'INVALID_LOW' | 'INVALID_HIGH';
   cotTheta: number;
   message: string;
 }
 
+// Plage de compatibilité géométrique bielle/tirant recommandée pour les modèles bielles-tirants
+// (pratique Schlaich, non une limite numérique du texte EC2 §6.5 lui-même) :
+// < 30° ou > 60° : non admis (bielle trop couchée/redressée, incompatibilité de déformation) ;
+// 30-45° et 55-60° : admissible mais sous-optimal ; 45-55° : plage optimale.
 export function checkStrutAngle(angleDeg: number): StrutAngleDiagnostic {
   const rad = (angleDeg * Math.PI) / 180;
   const cotTheta = Math.abs(1 / Math.tan(rad));
-  if (angleDeg < 21.8) {
+  if (angleDeg < 30.0) {
     return {
       angleDeg,
       status: 'INVALID_LOW',
       cotTheta,
-      message: `Angle θ = ${angleDeg.toFixed(1)}° < 21.8° (cot θ > 2.5). Non conforme EC2 §6.5 : risque élevé d'écrasement ou fissuration excessive.`
+      message: `Angle θ = ${angleDeg.toFixed(1)}° < 30°. Non admis : bielle trop couchée, incompatibilité de déformation bielle/tirant.`
     };
-  } else if (angleDeg < 30.0) {
+  } else if (angleDeg > 60.0) {
+    return {
+      angleDeg,
+      status: 'INVALID_HIGH',
+      cotTheta,
+      message: `Angle θ = ${angleDeg.toFixed(1)}° > 60°. Non admis : bielle trop redressée, effort tranchant mal transmis.`
+    };
+  } else if (angleDeg < 45.0) {
     return {
       angleDeg,
       status: 'WARNING_LOW',
       cotTheta,
-      message: `Angle θ = ${angleDeg.toFixed(1)}° acceptable selon EC2 (cot θ = ${cotTheta.toFixed(2)} ≤ 2.5), mais inférieur au seuil conseillé par Schlaich (θ ≥ 30°).`
+      message: `Angle θ = ${angleDeg.toFixed(1)}° admissible (30° ≤ θ ≤ 60°) mais sous-optimal : la plage recommandée est 45°-55°.`
     };
-  } else if (angleDeg > 68.2) {
+  } else if (angleDeg > 55.0) {
     return {
       angleDeg,
       status: 'WARNING_HIGH',
       cotTheta,
-      message: `Angle θ = ${angleDeg.toFixed(1)}° très redressé (cot θ = ${cotTheta.toFixed(2)} < 0.4). L'effort tranchant est mal transmis.`
+      message: `Angle θ = ${angleDeg.toFixed(1)}° admissible (30° ≤ θ ≤ 60°) mais sous-optimal : la plage recommandée est 45°-55°.`
     };
   }
   return {
     angleDeg,
     status: 'VALID',
     cotTheta,
-    message: `Angle θ = ${angleDeg.toFixed(1)}° optimal (21.8° ≤ θ ≤ 68.2°, cot θ = ${cotTheta.toFixed(2)}). Parfaitement conforme Eurocode 2.`
+    message: `Angle θ = ${angleDeg.toFixed(1)}° optimal (45° ≤ θ ≤ 55°, cot θ = ${cotTheta.toFixed(2)}).`
   };
 }
 

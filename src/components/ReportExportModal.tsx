@@ -360,7 +360,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                 <Compass size={14} className="text-blue-700" />
                 <span>3. Justification des Bielles de Béton & Angles d'Inclinaison θ (EC2 §6.5.2)</span>
               </span>
-              <span className="text-[10px] text-slate-500 font-normal">Critère θ : 21.8° ≤ θ ≤ 68.2° (1.0 ≤ cot θ ≤ 2.5)</span>
+              <span className="text-[10px] text-slate-500 font-normal">Critère θ (Schlaich) : 30° ≤ θ ≤ 60°, optimal 45°-55°</span>
             </div>
 
             <table className="w-full text-left font-mono text-[11px]">
@@ -392,7 +392,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                   const force = Math.abs(res?.force || 0);
                   const weffReq = res?.effectiveWidthRequired || 150;
                   const weffAct = res?.effectiveWidthActual ?? (m.effectiveWidth ? m.effectiveWidth * 1000 : weffReq * 1.05);
-                  const sigmaRdMax = res?.designStressLimit ?? (nuPrime * fcd);
+                  const sigmaRdMax = res?.designStressLimit ?? (m.hasTransverseTension ? nuPrime * fcd * 0.6 : fcd);
 
                   return (
                     <tr key={m.id} className="hover:bg-slate-50">
@@ -400,7 +400,9 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                       <td className="p-2.5 font-bold text-blue-700">-{force.toFixed(1)} kN</td>
                       <td className="p-2.5">
                         <span className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${
-                          angleDiag.status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          angleDiag.status === 'VALID' ? 'bg-emerald-100 text-emerald-800'
+                          : angleDiag.status === 'INVALID_LOW' || angleDiag.status === 'INVALID_HIGH' ? 'bg-red-100 text-red-800'
+                          : 'bg-amber-100 text-amber-800'
                         }`}>
                           {angleDeg.toFixed(1)}° (cot={angleDiag.cotTheta.toFixed(2)})
                         </span>
