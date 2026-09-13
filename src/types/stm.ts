@@ -123,6 +123,13 @@ export interface SolverResult {
   totalFx?: number;
   totalFy?: number;
   totalFz?: number;
+  unstableDetails?: {
+    cause: 'zero_dof_stiffness' | 'underconstrained_truss' | 'general_mechanism';
+    problematicNodeIds: string[];
+    details: string[];
+    suggestedFixes: string[];
+    missingBarCount?: number;
+  };
 }
 
 export interface OptimizationStep {
