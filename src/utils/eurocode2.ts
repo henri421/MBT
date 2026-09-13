@@ -28,6 +28,8 @@ export interface EurocodeNodeCheckResult {
   bearingUtilization: number;
   requiredBearingArea: number; // cm²
   actualBearingArea: number; // cm²
+  localBearingLimit?: number; // MPa, EC2 §6.7 (aire partiellement chargée), pieux circulaires uniquement
+  localBearingUtilization?: number;
   status: 'OK' | 'WARNING' | 'EXCEEDED';
   notes: string;
 }
@@ -166,7 +168,8 @@ export function checkEurocodeNode(
   rz: number,
   incidentMemberForces: { memberId: string; force: number; dir: number[] }[],
   concreteMat: ConcreteMaterial,
-  concreteThicknessM: number
+  concreteThicknessM: number,
+  nearestCircularSupportSpacingM?: number
 ): EurocodeNodeCheckResult {
   const fcd = (concreteMat.alphaCc * concreteMat.fck) / concreteMat.gammaC; // MPa
   const nuPrime = 1.0 - concreteMat.fck / 250.0;
@@ -218,8 +221,25 @@ export function checkEurocodeNode(
   const util = designStressLimit > 0 ? bearingStressMpa / designStressLimit : 0;
   const status = util > 1.0 ? 'EXCEEDED' : util > 0.9 ? 'WARNING' : 'OK';
 
+  // EN 1992-1-1 6.7 : aire partiellement chargée (écrasement local sous un pieu circulaire).
+  // Vérification ADDITIVE à la vérification de nœud ci-dessus, jamais un remplacement : Ac1 (aire
+  // de répartition, cercle concentrique limité à mi-distance du pieu voisin le plus proche) est par
+  // construction >= Ac0, donc sigma_Rdu = fcd*sqrt(Ac1/Ac0) >= fcd est toujours >= la limite nodale
+  // ci-dessus (<= fcd). Elle ne peut donc jamais être dimensionnante ; elle documente une marge
+  // de résistance locale distincte (écrasement de contact), pas une relaxation de la limite nodale.
+  let localBearingLimit: number | undefined;
+  let localBearingUtilization: number | undefined;
+  if (isCircular && node.isSupport && nearestCircularSupportSpacingM && nearestCircularSupportSpacingM > diamM) {
+    const ac0M2 = actualAreaM2;
+    const ac1M2 = (Math.PI * nearestCircularSupportSpacingM * nearestCircularSupportSpacingM) / 4.0;
+    const enhancementRatio = Math.min(3.0, Math.sqrt(ac1M2 / ac0M2));
+    localBearingLimit = fcd * enhancementRatio;
+    localBearingUtilization = localBearingLimit > 0 ? bearingStressMpa / localBearingLimit : 0;
+  }
+
   const shapeNote = isCircular
     ? `Pieu/Appui circulaire ∅${(diamM * 100).toFixed(0)}cm (A=${actualAreaCm2.toFixed(0)}cm²)`
+    + (localBearingLimit !== undefined ? ` | Écrasement local §6.7 : σRdu=${localBearingLimit.toFixed(2)} MPa` : '')
     : `Plaque ${( (node.bearingWidth || 0.20) * 100).toFixed(0)}×${((node.bearingDepth || concreteThicknessM) * 100).toFixed(0)}cm`;
 
   return {
@@ -228,6 +248,8 @@ export function checkEurocodeNode(
     bearingUtilization: util,
     requiredBearingArea: requiredAreaCm2,
     actualBearingArea: actualAreaCm2,
+    localBearingLimit,
+    localBearingUtilization,
     status,
     notes: `Nœud ${nodeType} [${shapeNote}]: k=${kFactor.toFixed(2)}, σ_Rd,max = ${designStressLimit.toFixed(2)} MPa, σ_b = ${bearingStressMpa.toFixed(2)} MPa`
   };

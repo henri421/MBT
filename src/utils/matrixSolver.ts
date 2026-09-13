@@ -513,6 +513,21 @@ export function solveTruss(
     }
   });
 
+  // Distance au pieu/appui circulaire voisin le plus proche (pour la vérification
+  // d'aire partiellement chargée EC2 §6.7, en complément — jamais en remplacement — de
+  // la vérification de nœud §6.5.4)
+  const circularSupportNodes = nodes.filter(n => n.isSupport && n.bearingShape === 'circular');
+  const nearestCircularSpacing = new Map<string, number>();
+  circularSupportNodes.forEach(n1 => {
+    let minDist = Infinity;
+    circularSupportNodes.forEach(n2 => {
+      if (n1.id === n2.id) return;
+      const d = Math.hypot(n2.x - n1.x, n2.y - n1.y, dimension === '3D' ? (n2.z || 0) - (n1.z || 0) : 0);
+      if (d < minDist) minDist = d;
+    });
+    if (minDist < Infinity) nearestCircularSpacing.set(n1.id, minDist);
+  });
+
   // Process nodes, calculate equilibrium residual and verify nodal stress
   let totalRx = 0;
   let totalRy = 0;
@@ -566,7 +581,8 @@ export function solveTruss(
       rz,
       nf ? nf.memberForces : [],
       concreteMat,
-      concreteThickness
+      concreteThickness,
+      nearestCircularSpacing.get(n.id)
     );
 
     nodeResultMap.set(n.id, {
@@ -581,6 +597,8 @@ export function solveTruss(
       bearingUtilization: nodeCheck.bearingUtilization,
       requiredBearingArea: nodeCheck.requiredBearingArea,
       actualBearingArea: nodeCheck.actualBearingArea,
+      localBearingLimit: nodeCheck.localBearingLimit,
+      localBearingUtilization: nodeCheck.localBearingUtilization,
       status: nodeCheck.status
     });
   });
