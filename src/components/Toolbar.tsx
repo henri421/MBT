@@ -19,7 +19,8 @@ import {
   Check,
   Box,
   Square,
-  FileCode
+  FileCode,
+  Ruler
 } from 'lucide-react';
 import { DimensionMode, ModelPreset } from '../types/stm';
 import { PRESETS } from '../utils/templates';
@@ -37,6 +38,8 @@ interface ToolbarProps {
   onToggleForceLabels: () => void;
   showAngles: boolean;
   onToggleAngles: () => void;
+  showDimensions?: boolean;
+  onToggleDimensions?: () => void;
   snapGrid: boolean;
   onToggleSnapGrid: () => void;
   canUndo: boolean;
@@ -45,6 +48,7 @@ interface ToolbarProps {
   onRedo: () => void;
   onExportModel: () => void;
   onExportSvg?: () => void;
+  onExportDxf?: () => void;
   onImportModel: (file: File) => void;
   hasSelection: boolean;
   onDeleteSelection: () => void;
@@ -66,6 +70,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onToggleForceLabels,
   showAngles,
   onToggleAngles,
+  showDimensions = true,
+  onToggleDimensions,
   snapGrid,
   onToggleSnapGrid,
   canUndo,
@@ -74,6 +80,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onRedo,
   onExportModel,
   onExportSvg,
+  onExportDxf,
   onImportModel,
   hasSelection,
   onDeleteSelection,
@@ -414,6 +421,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <span className="text-[11px] font-mono">θ</span>
           </button>
 
+          {onToggleDimensions && (
+            <button
+              id="btn-toggle-dimensions"
+              onClick={onToggleDimensions}
+              className={`p-1.5 rounded-md text-xs transition-colors ${
+                showDimensions
+                  ? 'bg-white text-indigo-700 shadow-sm font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Afficher/Masquer les lignes de cotes d'ingénierie (L, H, L_appuis)"
+            >
+              <Ruler size={14} />
+            </button>
+          )}
+
           <button
             id="btn-toggle-snap"
             onClick={onToggleSnapGrid}
@@ -448,6 +470,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             >
               <FileCode size={13} className="text-red-600" />
               <span>SVG</span>
+            </button>
+          )}
+          {onExportDxf && (
+            <button
+              id="btn-export-dxf"
+              onClick={onExportDxf}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-slate-800 hover:text-indigo-700 hover:bg-white transition-colors"
+              title="Exporter le modèle vers AutoCAD / Allplan / Revit (format DXF)"
+            >
+              <FileCode size={13} className="text-indigo-600" />
+              <span>DXF</span>
             </button>
           )}
           <button

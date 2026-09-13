@@ -175,10 +175,12 @@ export function checkEurocodeNode(
 
   const governingForce = Math.max(resultantLoad, maxCompressiveForce);
 
-  // Bearing plate / nodal zone area
-  const bearingW = node.bearingWidth || 0.20; // 200 mm default
-  const bearingD = node.bearingDepth || concreteThicknessM; // default beam width
-  const actualAreaM2 = bearingW * bearingD;
+  // Bearing plate / nodal zone area (rectangulaire ou circulaire pour pieux/colonnes)
+  const isCircular = node.bearingShape === 'circular';
+  const diamM = node.bearingDiameter || node.bearingWidth || 0.40;
+  const actualAreaM2 = isCircular
+    ? (Math.PI * diamM * diamM) / 4.0
+    : (node.bearingWidth || 0.20) * (node.bearingDepth || concreteThicknessM);
   const actualAreaCm2 = actualAreaM2 * 10000;
 
   // Bearing stress = F / Area
@@ -192,6 +194,10 @@ export function checkEurocodeNode(
   const util = designStressLimit > 0 ? bearingStressMpa / designStressLimit : 0;
   const status = util > 1.0 ? 'EXCEEDED' : util > 0.9 ? 'WARNING' : 'OK';
 
+  const shapeNote = isCircular
+    ? `Pieu/Appui circulaire ∅${(diamM * 100).toFixed(0)}cm (A=${actualAreaCm2.toFixed(0)}cm²)`
+    : `Plaque ${( (node.bearingWidth || 0.20) * 100).toFixed(0)}×${((node.bearingDepth || concreteThicknessM) * 100).toFixed(0)}cm`;
+
   return {
     designStressLimit,
     bearingStress: bearingStressMpa,
@@ -199,6 +205,116 @@ export function checkEurocodeNode(
     requiredBearingArea: requiredAreaCm2,
     actualBearingArea: actualAreaCm2,
     status,
-    notes: `Nœud ${nodeType}: k=${kFactor.toFixed(2)}, σ_Rd,max = ${designStressLimit.toFixed(2)} MPa, A_req = ${requiredAreaCm2.toFixed(1)} cm²`
+    notes: `Nœud ${nodeType} [${shapeNote}]: k=${kFactor.toFixed(2)}, σ_Rd,max = ${designStressLimit.toFixed(2)} MPa, σ_b = ${bearingStressMpa.toFixed(2)} MPa`
+  };
+}
+
+export interface SkinRebarCalculation {
+  bwM: number;
+  heightM: number;
+  fck: number;
+  fyk: number;
+  minRatio: number; // 0.001 (0.10%) per face according to EC2 9.7(1)
+  asMinTotalCm2: number;
+  asMinPerFaceCm2: number;
+  asMinPerFaceCm2PerM: number;
+  suggestedMesh: string;
+  maxSpacingMm: number;
+}
+
+export function calculateSkinRebar(
+  bwM: number,
+  heightM: number,
+  fck: number = 30,
+  fyk: number = 500
+): SkinRebarCalculation {
+  const minRatio = 0.001; // EC2 9.7(1): 0.1% per face
+  const totalAreaM2 = bwM * heightM;
+  const asMinPerFaceM2 = totalAreaM2 * minRatio;
+  const asMinPerFaceCm2 = asMinPerFaceM2 * 10000;
+  const asMinTotalCm2 = asMinPerFaceCm2 * 2;
+  const asMinPerFaceCm2PerM = (bwM * 1.0 * minRatio) * 10000; // cm²/m per face
+  const maxSpacingMm = Math.min(2 * bwM * 1000, 300);
+
+  let suggestedMesh = '2x HA8 e=15 cm';
+  if (asMinPerFaceCm2PerM > 5.0) suggestedMesh = '2x HA12 e=15 cm (ou ST50C)';
+  else if (asMinPerFaceCm2PerM > 3.0) suggestedMesh = '2x HA10 e=15 cm (ou ST35C)';
+  else if (asMinPerFaceCm2PerM > 1.5) suggestedMesh = '2x HA8 e=15 cm (ou ST25C)';
+  else suggestedMesh = '2x HA6 e=15 cm (ou ST15C)';
+
+  return {
+    bwM,
+    heightM,
+    fck,
+    fyk,
+    minRatio,
+    asMinTotalCm2,
+    asMinPerFaceCm2,
+    asMinPerFaceCm2PerM,
+    suggestedMesh,
+    maxSpacingMm
+  };
+}
+
+export interface StrutAngleDiagnostic {
+  angleDeg: number;
+  status: 'VALID' | 'WARNING_LOW' | 'INVALID_LOW' | 'WARNING_HIGH';
+  cotTheta: number;
+  message: string;
+}
+
+export function checkStrutAngle(angleDeg: number): StrutAngleDiagnostic {
+  const rad = (angleDeg * Math.PI) / 180;
+  const cotTheta = Math.abs(1 / Math.tan(rad));
+  if (angleDeg < 21.8) {
+    return {
+      angleDeg,
+      status: 'INVALID_LOW',
+      cotTheta,
+      message: `Angle θ = ${angleDeg.toFixed(1)}° < 21.8° (cot θ > 2.5). Non conforme EC2 §6.5 : risque élevé d'écrasement ou fissuration excessive.`
+    };
+  } else if (angleDeg < 30.0) {
+    return {
+      angleDeg,
+      status: 'WARNING_LOW',
+      cotTheta,
+      message: `Angle θ = ${angleDeg.toFixed(1)}° acceptable selon EC2 (cot θ = ${cotTheta.toFixed(2)} ≤ 2.5), mais inférieur au seuil conseillé par Schlaich (θ ≥ 30°).`
+    };
+  } else if (angleDeg > 68.2) {
+    return {
+      angleDeg,
+      status: 'WARNING_HIGH',
+      cotTheta,
+      message: `Angle θ = ${angleDeg.toFixed(1)}° très redressé (cot θ = ${cotTheta.toFixed(2)} < 0.4). L'effort tranchant est mal transmis.`
+    };
+  }
+  return {
+    angleDeg,
+    status: 'VALID',
+    cotTheta,
+    message: `Angle θ = ${angleDeg.toFixed(1)}° optimal (21.8° ≤ θ ≤ 68.2°, cot θ = ${cotTheta.toFixed(2)}). Parfaitement conforme Eurocode 2.`
+  };
+}
+
+export function checkElsStress(
+  tensionEdKn: number,
+  asProvidedCm2: number,
+  fyk: number = 500,
+  ratioElsElu: number = 0.70
+): {
+  sigmaS_Els: number;
+  limitMpa: number;
+  ratio: number;
+  isOk: boolean;
+} {
+  const tensionElsKn = tensionEdKn * ratioElsElu;
+  const sigmaS_Els = asProvidedCm2 > 0 ? (tensionElsKn / (asProvidedCm2 / 10)) : 0;
+  const limitMpa = 0.80 * fyk; // EC2 7.2(5) : limite 0.80 fyk sous ELS caractéristique
+  const ratio = limitMpa > 0 ? sigmaS_Els / limitMpa : 0;
+  return {
+    sigmaS_Els,
+    limitMpa,
+    ratio,
+    isOk: ratio <= 1.0
   };
 }

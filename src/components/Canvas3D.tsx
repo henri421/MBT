@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { STMNode, STMMember, ConcreteOutline, SolverResult } from '../types/stm';
+import { findBoundaryIntersection } from '../utils/geometryHelpers';
 import { RotateCw, Eye, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface Canvas3DProps {
@@ -391,33 +392,149 @@ export const Canvas3D: React.FC<Canvas3DProps> = ({
       stmGroup.add(sphere);
       clickableObjectsRef.current.push({ mesh: sphere, type: 'node', id: n.id });
 
-      // Support steel bearing plate
-      if (n.isSupport) {
-        const plateW = n.bearingWidth || 0.30;
-        const plateGeom = new THREE.BoxGeometry(plateW, 0.04, is3DModel ? plateW : (concrete.thickness || 0.30));
-        const plateMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
-        const plate = new THREE.Mesh(plateGeom, plateMat);
-        plate.position.set(pos.x, pos.y - 0.035, pos.z);
-        stmGroup.add(plate);
-      }
-
-      // External load 3D vector arrow
       const fVert = is3DModel ? (n.fz || n.fy || 0) : (n.fy || 0);
       const fHoriz = n.fx || 0;
+      const hasLoad = Math.abs(fVert) > 1 || Math.abs(fHoriz) > 1;
 
-      if (Math.abs(fVert) > 1 || Math.abs(fHoriz) > 1) {
+      // 1. Surface d'appui (Supports aux conditions limites : pieux ou plaques sous l'élément)
+      if (n.isSupport) {
+        let surfPos = pos.clone();
+        if (!is3DModel && concrete.points2D && concrete.points2D.length >= 3) {
+          const isRollerY = n.supportType === 'roller_y';
+          const direction = isRollerY ? 'left' : 'down';
+          const bPt = findBoundaryIntersection(concrete.points2D, n.x, n.y, direction);
+          if (bPt) {
+            surfPos = mapPoint(bPt.x, bPt.y, n.z);
+            // Ligne de diffusion entre le nœud interne et la surface d'appui extérieure
+            if (pos.distanceTo(surfPos) > 0.005) {
+              const diffGeom = new THREE.BufferGeometry().setFromPoints([pos, surfPos]);
+              const diffMat = new THREE.LineDashedMaterial({
+                color: 0x475569,
+                dashSize: 0.03,
+                gapSize: 0.02
+              });
+              const diffLine = new THREE.Line(diffGeom, diffMat);
+              diffLine.computeLineDistances();
+              stmGroup.add(diffLine);
+            }
+          }
+        }
+
+        if (n.bearingShape === 'circular') {
+          const diam = n.bearingDiameter || n.bearingWidth || 0.40;
+          const radius = diam / 2;
+          const pileHeight = 0.38;
+          const pileGeom = new THREE.CylinderGeometry(radius, radius, pileHeight, 24);
+          const pileMat = new THREE.MeshStandardMaterial({
+            color: 0x475569,
+            metalness: 0.3,
+            roughness: 0.6
+          });
+          const pileMesh = new THREE.Mesh(pileGeom, pileMat);
+          pileMesh.position.set(surfPos.x, surfPos.y - pileHeight / 2 - 0.01, surfPos.z);
+          stmGroup.add(pileMesh);
+
+          // Bague supérieure de tête de pieu
+          const ringGeom = new THREE.CylinderGeometry(radius * 1.02, radius * 1.02, 0.02, 24);
+          const ringMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.3 });
+          const ringMesh = new THREE.Mesh(ringGeom, ringMat);
+          ringMesh.position.set(surfPos.x, surfPos.y - 0.01, surfPos.z);
+          stmGroup.add(ringMesh);
+        } else {
+          const plateW = n.bearingWidth || 0.30;
+          const plateD = n.bearingDepth || (is3DModel ? plateW : (concrete.thickness || 0.30));
+          const plateGeom = new THREE.BoxGeometry(plateW, 0.04, plateD);
+          const plateMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
+          const plate = new THREE.Mesh(plateGeom, plateMat);
+          plate.position.set(surfPos.x, surfPos.y - 0.025, surfPos.z);
+          stmGroup.add(plate);
+        }
+      }
+
+      // 2. Surface de contact aux Nœuds Chargés (ex: Poteau ou plaque de répartition appliquant une force)
+      if (!n.isSupport && (hasLoad || n.bearingWidth !== undefined || n.bearingDiameter !== undefined)) {
+        let loadSurfPos = pos.clone();
+        let contactDirection: 'up' | 'down' | 'left' | 'right' = 'up';
+
+        if (fVert < -1) contactDirection = 'up';
+        else if (fVert > 1) contactDirection = 'down';
+        else if (fHoriz > 1) contactDirection = 'right';
+        else if (fHoriz < -1) contactDirection = 'left';
+
+        if (!is3DModel && concrete.points2D && concrete.points2D.length >= 3) {
+          const bPt = findBoundaryIntersection(concrete.points2D, n.x, n.y, contactDirection);
+          if (bPt) {
+            loadSurfPos = mapPoint(bPt.x, bPt.y, n.z);
+            // Ligne de diffusion entre le contact extérieur et le nœud interne
+            if (pos.distanceTo(loadSurfPos) > 0.005) {
+              const diffGeom = new THREE.BufferGeometry().setFromPoints([pos, loadSurfPos]);
+              const diffMat = new THREE.LineDashedMaterial({
+                color: 0xdc2626,
+                dashSize: 0.03,
+                gapSize: 0.02
+              });
+              const diffLine = new THREE.Line(diffGeom, diffMat);
+              diffLine.computeLineDistances();
+              stmGroup.add(diffLine);
+            }
+          }
+        } else if (is3DModel && concrete.bounds3D) {
+          loadSurfPos = new THREE.Vector3(pos.x, concrete.bounds3D.maxZ, pos.z);
+        }
+
+        // Plaque ou amorce de colonne sur la surface extérieure
+        if (n.bearingShape === 'circular') {
+          const diam = n.bearingDiameter || n.bearingWidth || 0.40;
+          const radius = diam / 2;
+          const colHeight = 0.16;
+          const colGeom = new THREE.CylinderGeometry(radius, radius, colHeight, 24);
+          const colMat = new THREE.MeshStandardMaterial({
+            color: 0x334155,
+            metalness: 0.4,
+            roughness: 0.4
+          });
+          const colMesh = new THREE.Mesh(colGeom, colMat);
+          colMesh.position.set(loadSurfPos.x, loadSurfPos.y + colHeight / 2 + 0.005, loadSurfPos.z);
+          stmGroup.add(colMesh);
+        } else {
+          const plateW = n.bearingWidth || 0.30;
+          const plateD = n.bearingDepth || (is3DModel ? plateW : (concrete.thickness || 0.30));
+          const plateH = 0.06;
+          const plateGeom = new THREE.BoxGeometry(plateW, plateH, plateD);
+          const plateMat = new THREE.MeshStandardMaterial({
+            color: 0x334155,
+            metalness: 0.5,
+            roughness: 0.35
+          });
+          const plate = new THREE.Mesh(plateGeom, plateMat);
+          plate.position.set(loadSurfPos.x, loadSurfPos.y + plateH / 2 + 0.005, loadSurfPos.z);
+          stmGroup.add(plate);
+        }
+      }
+
+      // 3. Flèche 3D de la force extérieure appliquée
+      if (hasLoad) {
         const dir3D = new THREE.Vector3(
           fHoriz !== 0 ? (fHoriz > 0 ? 1 : -1) : 0,
           fVert !== 0 ? (fVert > 0 ? 1 : -1) : 0,
           0
         ).normalize();
 
+        let targetPt = pos;
+        if (!is3DModel && concrete.points2D && fVert < -1) {
+          const bPt = findBoundaryIntersection(concrete.points2D, n.x, n.y, 'up');
+          if (bPt) {
+            const plateExtraH = n.bearingShape === 'circular' ? 0.16 : 0.06;
+            targetPt = new THREE.Vector3(bPt.x, bPt.y + plateExtraH, 0);
+          }
+        }
+
         const arrowOrigin = new THREE.Vector3(
-          pos.x - dir3D.x * 0.45,
-          pos.y - dir3D.y * 0.45,
-          pos.z
+          targetPt.x - dir3D.x * 0.45,
+          targetPt.y - dir3D.y * 0.45,
+          targetPt.z
         );
-        const arrow = new THREE.ArrowHelper(dir3D, arrowOrigin, 0.45, 0xdc2626, 0.12, 0.08);
+        const arrow = new THREE.ArrowHelper(dir3D, arrowOrigin, 0.45, 0xdc2626, 0.13, 0.08);
         stmGroup.add(arrow);
       }
     });

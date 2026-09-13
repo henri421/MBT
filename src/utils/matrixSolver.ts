@@ -42,74 +42,158 @@ export function solveTruss(
   const nodeIndexMap = new Map<string, number>();
   nodes.forEach((n, idx) => nodeIndexMap.set(n.id, idx));
 
+  // Determine which nodes are connected to tension ties or are chord tie candidates
+  const nodeConnectedTies = new Map<string, STMMember[]>();
+  nodes.forEach(n => {
+    const ties = members.filter(m => {
+      if (m.fromNodeId !== n.id && m.toNodeId !== n.id) return false;
+      if (m.type === 'tie') return true;
+      if (m.type === 'auto') {
+        // Un membre horizontal reliant deux appuis ou reliant le bas est un tirant potentiel
+        const otherNodeId = m.fromNodeId === n.id ? m.toNodeId : m.fromNodeId;
+        const otherNode = nodes.find(on => on.id === otherNodeId);
+        if (otherNode) {
+          const dy = Math.abs(otherNode.y - n.y);
+          const dx = Math.abs(otherNode.x - n.x);
+          if (n.isSupport && otherNode.isSupport && dx > dy) return true;
+        }
+      }
+      return false;
+    });
+    nodeConnectedTies.set(n.id, ties);
+  });
+
   // Determine fixed/constrained DOFs
   const isDofConstrained = new Array<boolean>(totalDofs).fill(false);
   let totalRestraints = 0;
 
-  nodes.forEach((n, idx) => {
-    const baseDof = idx * dofPerNode;
-    const isBlocked = n.isSupport || n.isBlockedNearSupport;
-    if (isBlocked) {
-      if (dimension === '2D') {
-        if (n.isBlockedNearSupport) {
-          // Nœud bloqué à l'interface d'appui (bloque Rx et Ry pour éviter les bielles/tirants fictifs)
+  // Support nodes list
+  const supportNodes = nodes.filter(n => n.isSupport || n.isBlockedNearSupport);
+
+  if (dimension === '2D') {
+    // Dans un modèle STM 2D (poutre haute, semelle, corbeau) :
+    // - Pour éviter un déplacement de corps rigide en Y : les appuis bloquent Ry
+    // - Pour éviter un déplacement de corps rigide en X : UN SEUL appui de référence bloque Rx (pin)
+    // - Tous les autres appuis sont des rouleaux (roller_x) pour que la poussée des bielles
+    //   soit intégralement reprise en traction par le tirant inférieur sans blocage parasite !
+    let assignedRxNodeId: string | null = null;
+
+    // Chercher d'abord un appui explicitement 'pin'
+    const explicitPin = supportNodes.find(n => n.supportType === 'pin');
+    if (explicitPin) {
+      assignedRxNodeId = explicitPin.id;
+    } else if (supportNodes.length > 0) {
+      assignedRxNodeId = supportNodes[0].id;
+    }
+
+    nodes.forEach((n, idx) => {
+      const baseDof = idx * dofPerNode;
+      const isSupportOrBlocked = n.isSupport || n.isBlockedNearSupport;
+      const hasTie = (nodeConnectedTies.get(n.id)?.length ?? 0) > 0;
+
+      if (isSupportOrBlocked) {
+        if (n.supportType === 'roller_y') {
+          // Bloque Rx, glisse en Y
+          isDofConstrained[baseDof] = true;
+          totalRestraints += 1;
+        } else if (n.id === assignedRxNodeId) {
+          // Appui de référence principal : bloque Rx et Ry
           isDofConstrained[baseDof] = true;     // Rx
           isDofConstrained[baseDof + 1] = true; // Ry
           totalRestraints += 2;
         } else {
-          switch (n.supportType) {
-            case 'roller_x':
-              isDofConstrained[baseDof + 1] = true; // Ry contraint (glisse horizontalement)
-              totalRestraints += 1;
-              break;
-            case 'roller_y':
-              isDofConstrained[baseDof] = true;     // Rx contraint (glisse verticalement)
-              totalRestraints += 1;
-              break;
-            case 'pin':
-            default:
-              isDofConstrained[baseDof] = true;     // Rx
-              isDofConstrained[baseDof + 1] = true; // Ry
-              totalRestraints += 2;
-              break;
-          }
-        }
-      } else {
-        // 3D
-        if (n.isBlockedNearSupport) {
-          isDofConstrained[baseDof] = true;
-          isDofConstrained[baseDof + 1] = true;
-          isDofConstrained[baseDof + 2] = true;
-          totalRestraints += 3;
-        } else {
-          switch (n.supportType) {
-            case 'roller_z':
-              isDofConstrained[baseDof + 2] = true; // Rz
-              totalRestraints += 1;
-              break;
-            case 'roller_x':
-              isDofConstrained[baseDof + 1] = true; // Ry
-              isDofConstrained[baseDof + 2] = true; // Rz
-              totalRestraints += 2;
-              break;
-            case 'roller_y':
-              isDofConstrained[baseDof] = true;     // Rx
-              isDofConstrained[baseDof + 2] = true; // Rz
-              totalRestraints += 2;
-              break;
-            case 'pin':
-            case 'fixed_3d':
-            default:
-              isDofConstrained[baseDof] = true;
-              isDofConstrained[baseDof + 1] = true;
-              isDofConstrained[baseDof + 2] = true;
-              totalRestraints += 3;
-              break;
+          // Tout autre appui :
+          // Si le nœud a un tirant ou est un appui de semelle/poutre, bloquer Ry SEUL (rouleau X)
+          // afin de laisser le tirant s'allonger librement et reprendre sa traction !
+          if (hasTie || n.supportType === 'roller_x' || n.isSupport) {
+            isDofConstrained[baseDof + 1] = true; // Ry
+            totalRestraints += 1;
+          } else {
+            // Nœud bloqué sans tirant
+            isDofConstrained[baseDof] = true;     // Rx
+            isDofConstrained[baseDof + 1] = true; // Ry
+            totalRestraints += 2;
           }
         }
       }
+    });
+  } else {
+    // DIMENSION 3D (ex: Semelle sur 2, 3 ou 4 pieux) :
+    // Les têtes de pieux bloquent verticalement Rz.
+    // Pour la stabilité horizontale globale sans empêcher les tirants de travailler :
+    // 1. Tous les pieux / appuis bloquent Rz (empêche translation Z, rotation autour de X et Y)
+    // 2. Un pieu de référence P1 bloque Rx et Ry (empêche translation globale en X et Y)
+    // 3. Un pieu secondaire P2 bloque le degré orthogonal à l'axe P1->P2 (empêche rotation globale autour de Z)
+    // 4. TOUS les autres degrés de liberté horizontaux restent libres pour que les tirants
+    //    entre têtes de pieux développent 100% de leur traction axiale !
+    const refSupport = supportNodes[0];
+    let rotSupport: STMNode | null = null;
+    let yawDofToBlock: 'x' | 'y' = 'y';
+
+    if (refSupport && supportNodes.length > 1) {
+      let maxDistSq = -1;
+      for (let i = 1; i < supportNodes.length; i++) {
+        const sn = supportNodes[i];
+        const dx = sn.x - refSupport.x;
+        const dy = sn.y - refSupport.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > maxDistSq) {
+          maxDistSq = distSq;
+          rotSupport = sn;
+          // Si le vecteur est plus long en X, bloquer Ry sur rotSupport empêche le lacet autour de Z sans bloquer le tirant en X
+          yawDofToBlock = Math.abs(dx) >= Math.abs(dy) ? 'y' : 'x';
+        }
+      }
     }
-  });
+
+    nodes.forEach((n, idx) => {
+      const baseDof = idx * dofPerNode;
+      const isSupportOrBlocked = n.isSupport || n.isBlockedNearSupport;
+
+      if (isSupportOrBlocked) {
+        // Tout appui bloque Rz
+        isDofConstrained[baseDof + 2] = true;
+        totalRestraints += 1;
+
+        if (refSupport && n.id === refSupport.id) {
+          // Bloquer Rx et Ry sur l'appui de référence
+          isDofConstrained[baseDof] = true;     // Rx
+          isDofConstrained[baseDof + 1] = true; // Ry
+          totalRestraints += 2;
+        } else if (rotSupport && n.id === rotSupport.id) {
+          // Bloquer la rotation globale en lacet autour de Z
+          if (yawDofToBlock === 'y') {
+            isDofConstrained[baseDof + 1] = true; // Ry
+            totalRestraints += 1;
+          } else {
+            isDofConstrained[baseDof] = true;     // Rx
+            totalRestraints += 1;
+          }
+        }
+      }
+    });
+
+    // Si seulement 2 appuis en 3D (ex: semelle 2 pieux modélisée en 3D),
+    // stabiliser le basculement hors-plan du treillis plan sans bloquer le tirant
+    if (supportNodes.length === 2 && totalRestraints < 6) {
+      if (rotSupport) {
+        const rotIdx = nodeIndexMap.get(rotSupport.id)!;
+        if (!isDofConstrained[rotIdx * dofPerNode + 1]) {
+          isDofConstrained[rotIdx * dofPerNode + 1] = true; // Ry
+          totalRestraints += 1;
+        }
+      }
+      // Bloquer le DDL hors-plan Ry sur le nœud le plus haut (nœud de colonne / charge)
+      const topNode = [...nodes].sort((a, b) => (b.z || b.y || 0) - (a.z || a.y || 0))[0];
+      if (topNode) {
+        const topIdx = nodeIndexMap.get(topNode.id)!;
+        if (!isDofConstrained[topIdx * dofPerNode + 1]) {
+          isDofConstrained[topIdx * dofPerNode + 1] = true; // Ry
+          totalRestraints += 1;
+        }
+      }
+    }
+  }
 
   const minRequiredRestraints = dimension === '2D' ? 3 : 6;
   if (totalRestraints < minRequiredRestraints) {
