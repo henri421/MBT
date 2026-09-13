@@ -1220,8 +1220,14 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                           return (
                             <div className="col-span-2 flex items-center justify-between pt-1 border-t border-slate-200 text-[9.5px]">
                               <span>Angle θ : <strong className="text-slate-800">{deg.toFixed(1)}°</strong> (cot={diag.cotTheta.toFixed(2)})</span>
-                              <span className={`px-1.5 py-0.2 rounded font-bold ${diag.status === 'VALID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                                {diag.status === 'VALID' ? 'EC2 Conforme' : diag.status === 'WARNING_LOW' ? 'θ < 30° (Schlaich)' : 'Non conforme'}
+                              <span className={`px-1.5 py-0.2 rounded font-bold ${
+                                diag.status === 'VALID' ? 'bg-emerald-100 text-emerald-800'
+                                : diag.status === 'INVALID_LOW' || diag.status === 'INVALID_HIGH' ? 'bg-red-100 text-red-800'
+                                : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {diag.status === 'VALID' ? 'Optimal (45-55°)'
+                                  : diag.status === 'WARNING_LOW' || diag.status === 'WARNING_HIGH' ? 'Admissible (30-60°)'
+                                  : 'Non admis'}
                               </span>
                             </div>
                           );
