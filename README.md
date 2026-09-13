@@ -22,7 +22,7 @@
 
 ## Présentation générale
 
-Dans les structures en béton armé, les **zones de discontinuité géométrique ou statique** (dites **Zones D**) ne respectent pas l'hypothèse de Navier-Bernoulli des sections planes. L'Eurocode 2 (NF EN 1992-1-1, chapitre 6.5 et annexe J) préconise pour ces éléments la **méthode des bielles et tirants** (*Strut-and-Tie Method* - STM), fondée sur le **théorème de la borne inférieure de la plasticité** :
+Dans les structures en béton armé, les **zones de discontinuité géométrique ou statique** (dites **Zones D**) ne respectent pas l'hypothèse de Navier-Bernoulli des sections planes. L'Eurocode 2 (EN 1992-1-1, chapitre 6.5 et annexe J) préconise pour ces éléments la **méthode des bielles et tirants** (*Strut-and-Tie Method* - STM), fondée sur le **théorème de la borne inférieure de la plasticité** :
 - **Les bielles (en bleu)** représentent les champs de compression dans le béton.
 - **Les tirants (en rouge)** représentent les armatures d'acier tendues.
 - **Les nœuds** constituent les zones de convergence et d'équilibrage des efforts.
@@ -176,5 +176,5 @@ Les fichiers compilés et optimisés sont générés dans le dossier `dist/`.
 ---
 
 ## Licence & Auteur
-Développé pour les ingénieurs en calcul de structures et les passionnés de génie civil selon la norme européenne **NF EN 1992-1-1**.
+Développé pour les ingénieurs en calcul de structures et les passionnés de génie civil selon la norme européenne **EN 1992-1-1**.
 Distribué sous licence MIT.
