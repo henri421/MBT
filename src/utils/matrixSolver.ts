@@ -42,27 +42,6 @@ export function solveTruss(
   const nodeIndexMap = new Map<string, number>();
   nodes.forEach((n, idx) => nodeIndexMap.set(n.id, idx));
 
-  // Determine which nodes are connected to tension ties or are chord tie candidates
-  const nodeConnectedTies = new Map<string, STMMember[]>();
-  nodes.forEach(n => {
-    const ties = members.filter(m => {
-      if (m.fromNodeId !== n.id && m.toNodeId !== n.id) return false;
-      if (m.type === 'tie') return true;
-      if (m.type === 'auto') {
-        // Un membre horizontal reliant deux appuis ou reliant le bas est un tirant potentiel
-        const otherNodeId = m.fromNodeId === n.id ? m.toNodeId : m.fromNodeId;
-        const otherNode = nodes.find(on => on.id === otherNodeId);
-        if (otherNode) {
-          const dy = Math.abs(otherNode.y - n.y);
-          const dx = Math.abs(otherNode.x - n.x);
-          if (n.isSupport && otherNode.isSupport && dx > dy) return true;
-        }
-      }
-      return false;
-    });
-    nodeConnectedTies.set(n.id, ties);
-  });
-
   // Determine fixed/constrained DOFs
   const isDofConstrained = new Array<boolean>(totalDofs).fill(false);
   let totalRestraints = 0;
@@ -505,9 +484,12 @@ export function solveTruss(
       designCapacity: ecCheck.designCapacity,
       utilizationRatio: ecCheck.utilizationRatio,
       requiredAs: ecCheck.requiredAs,
+      providedAs: ecCheck.providedAs,
       suggestedRebar: ecCheck.suggestedRebar,
+      anchorageLengthMm: ecCheck.anchorageLengthMm,
       designStressLimit: ecCheck.designStressLimit,
       effectiveWidthRequired: ecCheck.effectiveWidthRequired,
+      effectiveWidthActual: ecCheck.effectiveWidthActual,
       status: ecCheck.status,
       notes: ecCheck.notes
     });

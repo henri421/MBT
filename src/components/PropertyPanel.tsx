@@ -1235,7 +1235,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                             <div className="col-span-2 flex items-center justify-between pt-1 border-t border-slate-200 text-[9.5px]">
                               <span>Contrainte ELS : <strong className={els.isOk ? 'text-slate-800' : 'text-red-600'}>{els.sigmaS_Els.toFixed(0)} MPa</strong></span>
                               <span className={`px-1.5 py-0.2 rounded font-bold ${els.isOk ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                                {els.isOk ? 'σs ≤ 400 MPa OK' : 'σs > 400 MPa Fissuration'}
+                                {els.isOk ? `σs ≤ ${els.limitMpa.toFixed(0)} MPa OK` : `σs > ${els.limitMpa.toFixed(0)} MPa Fissuration`}
                               </span>
                             </div>
                           );
@@ -1651,9 +1651,13 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   {(() => {
                     // Estimate total shear from reaction or max vertical tie
                     const maxFy = Math.max(...nodes.map((n) => Math.abs(n.fy || 0)), 100);
+                    const ys = concreteOutline.points2D.map(([, y]) => y);
+                    const elementHeightM = ys.length > 1
+                      ? Math.max(...ys) - Math.min(...ys)
+                      : concreteOutline.thickness;
                     const stirrups = calculateSuspensionStirrups(
                       maxFy,
-                      concreteOutline.height,
+                      elementHeightM,
                       steelMat.fyk
                     );
                     const prop = stirrups.stirrupProposals[0];
