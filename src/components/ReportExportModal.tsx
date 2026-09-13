@@ -273,7 +273,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                   Combinaison : <span className="font-bold text-slate-900">1.00 G + 1.00 Q (≈ 0.70 ELU)</span>
                 </div>
                 <p className="text-[10px] text-slate-500 font-sans leading-relaxed">
-                  Limitation de la contrainte de traction dans les armatures : σ_s ≤ 0.80 fyk = 400 MPa (EC2 §7.2).
+                  Limitation de la contrainte de traction dans les armatures : σ_s ≤ 0.80 fyk = {(0.80 * steelMat.fyk).toFixed(0)} MPa (EC2 §7.2).
                 </p>
               </div>
 
@@ -347,7 +347,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Contrainte limite admissible ELS (0.80 fyk) :</span>
-                  <span className="font-bold text-blue-700">400.0 MPa</span>
+                  <span className="font-bold text-blue-700">{(0.80 * steelMat.fyk).toFixed(1)} MPa</span>
                 </div>
               </div>
             </div>
@@ -391,7 +391,8 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
 
                   const force = Math.abs(res?.force || 0);
                   const weffReq = res?.effectiveWidthRequired || 150;
-                  const weffAct = (m.effectiveWidth ? m.effectiveWidth * 1000 : weffReq * 1.05);
+                  const weffAct = res?.effectiveWidthActual ?? (m.effectiveWidth ? m.effectiveWidth * 1000 : weffReq * 1.05);
+                  const sigmaRdMax = res?.designStressLimit ?? (nuPrime * fcd);
 
                   return (
                     <tr key={m.id} className="hover:bg-slate-50">
@@ -405,7 +406,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                         </span>
                       </td>
                       <td className="p-2.5 text-slate-700">
-                        {res ? (res.designCapacity / ((concreteOutline.thickness * (weffAct / 1000)) * 1000)).toFixed(2) : (nuPrime * fcd).toFixed(2)} MPa
+                        {sigmaRdMax.toFixed(2)} MPa
                       </td>
                       <td className="p-2.5 font-bold text-slate-900">{weffReq.toFixed(0)} mm</td>
                       <td className="p-2.5 text-slate-700">{weffAct.toFixed(0)} mm</td>
@@ -434,7 +435,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                 <Layers size={14} className="text-red-600" />
                 <span>4. Justification des Tirants d'Armatures HA (ELU & ELS §7.2)</span>
               </span>
-              <span className="text-[10px] text-slate-500 font-normal">Vérification fyd = {fyd.toFixed(0)} MPa & ELS ≤ 400 MPa</span>
+              <span className="text-[10px] text-slate-500 font-normal">Vérification fyd = {fyd.toFixed(0)} MPa & ELS ≤ {(0.80 * steelMat.fyk).toFixed(0)} MPa</span>
             </div>
 
             <table className="w-full text-left font-mono text-[11px]">
@@ -461,6 +462,7 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                   const asProv = res?.providedAs || (reqAs * 1.15);
                   const elsCheck = checkElsStress(force, asProv, steelMat.fyk);
                   const lbd = res?.anchorageLengthMm || 450;
+                  const isConforming = res?.status === 'OK' && elsCheck.isOk;
 
                   return (
                     <tr key={m.id} className="hover:bg-slate-50">
@@ -471,14 +473,20 @@ export const ReportExportModal: React.FC<ReportExportModalProps> = ({
                       <td className="p-2.5 text-emerald-700 font-bold">{asProv.toFixed(2)} cm²</td>
                       <td className="p-2.5">
                         <span className={`font-bold ${elsCheck.isOk ? 'text-slate-800' : 'text-red-600'}`}>
-                          {elsCheck.sigmaS_Els.toFixed(0)} / 400 MPa
+                          {elsCheck.sigmaS_Els.toFixed(0)} / {elsCheck.limitMpa.toFixed(0)} MPa
                         </span>
                       </td>
                       <td className="p-2.5 text-slate-700">{lbd.toFixed(0)} mm</td>
                       <td className="p-2.5 text-right">
-                        <span className="text-emerald-700 font-bold inline-flex items-center gap-1">
-                          <CheckCircle2 size={13} /> OK
-                        </span>
+                        {isConforming ? (
+                          <span className="text-emerald-700 font-bold inline-flex items-center gap-1">
+                            <CheckCircle2 size={13} /> OK
+                          </span>
+                        ) : (
+                          <span className="text-red-600 font-bold inline-flex items-center gap-1">
+                            <AlertTriangle size={13} /> {res?.status && res.status !== 'OK' ? res.status : 'ELS'}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

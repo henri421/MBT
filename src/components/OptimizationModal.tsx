@@ -143,14 +143,14 @@ export const OptimizationModal: React.FC<OptimizationModalProps> = ({
                     {optResult.optimizedEnergy.toFixed(1)} J
                   </div>
                   <div className="text-[10px] text-emerald-800 font-bold mt-1">
-                    Gain : -{optResult.energyReductionPercent.toFixed(1)}% d'énergie
+                    Gain : -{optResult.reductionPercentage.toFixed(1)}% d'énergie
                   </div>
                 </div>
 
                 <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
                   <div className="text-slate-500 text-[11px] mb-1">Gain Aciers Estimé</div>
                   <div className="text-lg font-bold font-mono text-slate-900">
-                    -{optResult.steelWeightReductionPercent.toFixed(1)}%
+                    -{optResult.steelWeightReductionPercentage.toFixed(1)}%
                   </div>
                   <div className="text-[10px] text-slate-400 mt-1">Économie de ferraillage</div>
                 </div>
@@ -233,8 +233,13 @@ export const OptimizationModal: React.FC<OptimizationModalProps> = ({
           {optResult && (
             <button
               onClick={() => {
-                if (optResult.steps[currentStepIndex]) {
-                  onApplyOptimization(optResult.steps[currentStepIndex].nodes);
+                const step = optResult.steps[currentStepIndex];
+                if (step) {
+                  const merged = nodes.map(n => {
+                    const pos = step.nodePositions.find(p => p.id === n.id);
+                    return pos ? { ...n, x: pos.x, y: pos.y, z: pos.z } : n;
+                  });
+                  onApplyOptimization(merged);
                 } else {
                   onApplyOptimization(optResult.optimizedNodes);
                 }
