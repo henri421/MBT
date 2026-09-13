@@ -41,9 +41,11 @@ export interface STMMember {
   barDiameter?: number; // mm (e.g. 20, 25, 32)
   rebarConfig?: {
     barDiameter: number; // mm
-    numBars: number;
-    numLayers: number;
-    providedAs: number; // cm²
+    barCount: number;
+    layers: number;
+    totalAreaCm2: number; // cm²
+    anchorageLengthCm?: number;
+    hookAnchorageLengthCm?: number;
   };
 }
 
@@ -86,9 +88,12 @@ export interface SolverMemberResult {
   designCapacity: number; // kN
   utilizationRatio: number; // force / designCapacity (0 to 1+)
   requiredAs?: number; // cm² for ties
+  providedAs?: number; // cm² for ties, from real rebarConfig or suggested rebar
   suggestedRebar?: string;
+  anchorageLengthMm?: number; // lbd straight (mm), for ties
   designStressLimit: number; // sigma_Rd,max (MPa)
   effectiveWidthRequired: number; // mm
+  effectiveWidthActual?: number; // mm, for struts
   status: 'OK' | 'WARNING' | 'EXCEEDED';
   notes: string;
 }
@@ -142,6 +147,9 @@ export interface OptimizationResult {
   initialEnergy: number;
   optimizedEnergy: number;
   reductionPercentage: number;
+  initialSteelWeight: number; // kg
+  optimizedSteelWeight: number; // kg
+  steelWeightReductionPercentage: number;
   iterations: number;
   optimizedNodes: STMNode[];
   steps: OptimizationStep[];

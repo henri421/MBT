@@ -5,6 +5,7 @@ import {
   SteelMaterial,
   NodeType
 } from '../types/stm';
+import { calculateAnchorageLengths } from './rebarCalculator';
 
 export interface EurocodeMemberCheckResult {
   stress: number; // MPa
@@ -12,8 +13,11 @@ export interface EurocodeMemberCheckResult {
   designCapacity: number; // kN
   utilizationRatio: number;
   requiredAs?: number; // cm² for ties
+  providedAs?: number; // cm² for ties, from real rebarConfig or suggested rebar
   suggestedRebar?: string;
+  anchorageLengthMm?: number; // lbd straight (mm), for ties
   effectiveWidthRequired: number; // mm
+  effectiveWidthActual?: number; // mm, for struts
   status: 'OK' | 'WARNING' | 'EXCEEDED';
   notes: string;
 }
@@ -60,28 +64,47 @@ export function checkEurocodeMember(
   const isTension = forceKn > 0.001;
   const absForce = Math.abs(forceKn);
 
+  if (member.type === 'tie' && isCompression) {
+    // EN 1992-1-1 6.5.3 : un tirant ne reprend pas la compression. Le typage de l'élément
+    // est incompatible avec l'effort résolu par le solveur (géométrie ou optimisation à revoir).
+    return {
+      stress: 0,
+      designStressLimit: fyd,
+      designCapacity: 0,
+      utilizationRatio: 99,
+      effectiveWidthRequired: 0,
+      status: 'EXCEEDED',
+      notes: `Incohérence de modèle (EC2 §6.5.3) : élément typé "Tirant" mais effort résolu compressif (${absForce.toFixed(1)} kN). Un tirant ne reprend pas la compression — revoir la géométrie du treillis ou retyper l'élément en bielle.`
+    };
+  }
+
   if (isTension || member.type === 'tie') {
     // EN 1992-1-1 6.5.3: Tirants (Ties)
     // As,req = Ftd / fyd. In cm²: (Ftd [kN] / (fyd [MPa] / 10))
     const requiredAsCm2 = (absForce / (fyd / 10)); // cm²
 
-    // Find suggested rebar
+    // Find suggested rebar (next commercial size covering the requirement)
     let suggestedRebar = '> 8 HA 32 (Forte nappe)';
+    let suggestedAsCm2 = requiredAsCm2 * 1.05;
     for (const reb of REBAR_TABLE) {
       if (reb.asCm2 >= requiredAsCm2 * 0.99) {
         suggestedRebar = `${reb.desc} (${reb.asCm2.toFixed(2)} cm²)`;
+        suggestedAsCm2 = reb.asCm2;
         break;
       }
     }
 
-    // Steel capacity
-    // If effective rebar provided or based on suggested:
-    const providedAsCm2 = requiredAsCm2 > 0 ? requiredAsCm2 * 1.05 : 2.26;
+    // Steel capacity: use the rebar the user actually selected (member.rebarConfig)
+    // when available, otherwise fall back to the suggested commercial rebar.
+    const providedAsCm2 = member.rebarConfig?.totalAreaCm2 ?? (requiredAsCm2 > 0 ? suggestedAsCm2 : 2.26);
     const designCapacityKn = providedAsCm2 * (fyd / 10);
     const util = designCapacityKn > 0 ? absForce / designCapacityKn : 0;
     const stress = absForce > 0 ? (absForce / (providedAsCm2 / 10)) : 0; // MPa
 
     const status = util > 1.0 ? 'EXCEEDED' : util > 0.9 ? 'WARNING' : 'OK';
+
+    const diameterMm = member.rebarConfig?.barDiameter ?? member.barDiameter ?? 16;
+    const anchorage = calculateAnchorageLengths(diameterMm, concreteMat.fck, steelMat.fyk, steelMat.gammaS, concreteMat.gammaC);
 
     return {
       stress: Math.min(stress, fyd),
@@ -89,10 +112,12 @@ export function checkEurocodeMember(
       designCapacity: designCapacityKn,
       utilizationRatio: util,
       requiredAs: requiredAsCm2,
+      providedAs: providedAsCm2,
       suggestedRebar,
+      anchorageLengthMm: anchorage.lbdStraightMm,
       effectiveWidthRequired: 0,
       status,
-      notes: `Tirant d'armatures: As,req = ${requiredAsCm2.toFixed(2)} cm² (fyd = ${fyd.toFixed(1)} MPa)`
+      notes: `Tirant d'armatures: As,req = ${requiredAsCm2.toFixed(2)} cm², As,prov = ${providedAsCm2.toFixed(2)} cm² (fyd = ${fyd.toFixed(1)} MPa)`
     };
   } else {
     // EN 1992-1-1 6.5.2: Bielles de compression (Struts)
@@ -127,6 +152,7 @@ export function checkEurocodeMember(
       designCapacity: designCapacityKn,
       utilizationRatio: util,
       effectiveWidthRequired: requiredWidthMm,
+      effectiveWidthActual: actualWidthMm,
       status,
       notes: `${regimeDesc} | σ_Rd,max = ${sigmaRdMax.toFixed(2)} MPa | bielle req. = ${requiredWidthMm.toFixed(0)} mm`
     };

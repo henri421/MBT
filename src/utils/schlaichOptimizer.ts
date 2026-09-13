@@ -23,6 +23,27 @@ export function isPointInPolygon(point: [number, number], vs: [number, number][]
   return inside;
 }
 
+// Distance minimale du point à chaque arête du polygone (0 si le polygone a moins de 2 sommets)
+function distanceToPolygonBoundary(point: [number, number], vs: [number, number][]): number {
+  if (vs.length < 2) return Infinity;
+  const [px, py] = point;
+  let minDist = Infinity;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const [x1, y1] = vs[j];
+    const [x2, y2] = vs[i];
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+    let t = lenSq > 0 ? ((px - x1) * dx + (py - y1) * dy) / lenSq : 0;
+    t = Math.max(0, Math.min(1, t));
+    const closestX = x1 + t * dx;
+    const closestY = y1 + t * dy;
+    const dist = Math.hypot(px - closestX, py - closestY);
+    if (dist < minDist) minDist = dist;
+  }
+  return minDist;
+}
+
 export function optimizeSchlaichEnergy(
   nodes: STMNode[],
   members: STMMember[],
@@ -73,6 +94,9 @@ export function optimizeSchlaichEnergy(
       initialEnergy,
       optimizedEnergy: initialEnergy,
       reductionPercentage: 0,
+      initialSteelWeight: initialSol.totalSteelWeightEst,
+      optimizedSteelWeight: initialSol.totalSteelWeightEst,
+      steelWeightReductionPercentage: 0,
       iterations: 0,
       optimizedNodes: nodes,
       steps
@@ -123,9 +147,12 @@ export function optimizeSchlaichEnergy(
         const testY = origNode.y + dy;
         const testZ = dimension === '3D' ? (origNode.z || 0) + (dz || 0) : 0;
 
-        // Check if test point is inside concrete outline
+        // Check if test point is inside concrete outline, with a safety margin from the boundary
         if (concreteOutline.points2D && concreteOutline.points2D.length >= 3) {
           if (!isPointInPolygon([testX, testY], concreteOutline.points2D)) {
+            continue;
+          }
+          if (distanceToPolygonBoundary([testX, testY], concreteOutline.points2D) < margin) {
             continue;
           }
         }
@@ -185,10 +212,21 @@ export function optimizeSchlaichEnergy(
 
   const reductionPercentage = initialEnergy > 0 ? ((initialEnergy - bestEnergy) / initialEnergy) * 100 : 0;
 
+  // Recalcule le poids d'acier réel sur la géométrie optimisée pour un gain non fictif
+  const finalSol = solveTruss(bestNodes, members, concreteMat, steelMat, concreteOutline.thickness, dimension);
+  const initialSteelWeight = initialSol.totalSteelWeightEst;
+  const optimizedSteelWeight = finalSol.success ? finalSol.totalSteelWeightEst : initialSteelWeight;
+  const steelWeightReductionPercentage = initialSteelWeight > 0
+    ? Math.max(0, ((initialSteelWeight - optimizedSteelWeight) / initialSteelWeight) * 100)
+    : 0;
+
   return {
     initialEnergy,
     optimizedEnergy: bestEnergy,
     reductionPercentage: Math.max(0, reductionPercentage),
+    initialSteelWeight,
+    optimizedSteelWeight,
+    steelWeightReductionPercentage,
     iterations: steps.length - 1,
     optimizedNodes: bestNodes,
     steps

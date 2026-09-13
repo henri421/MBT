@@ -760,8 +760,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
                       e.stopPropagation();
                       onDeleteMember(m.id);
                     }}
-                    title="Supprimer cette barre (Touche Suppr)"
                   >
+                    <title>Supprimer cette barre (Touche Suppr)</title>
                     <circle cx="0" cy="0" r="11" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="shadow-md" />
                     <path
                       d="M -4 -4 h 8 M -3 -4 v 7 a 1 1 0 0 0 1 1 h 4 a 1 1 0 0 0 1 -1 v -7 M -1 -2 v 4 M 1 -2 v 4"
@@ -1210,8 +1210,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
                       e.stopPropagation();
                       onDeleteNode(node.id);
                     }}
-                    title="Supprimer ce nœud (Touche Suppr)"
                   >
+                    <title>Supprimer ce nœud (Touche Suppr)</title>
                     <circle cx="0" cy="0" r="11" fill="#ef4444" stroke="#ffffff" strokeWidth="2" className="shadow-md" />
                     <path
                       d="M -4 -4 h 8 M -3 -4 v 7 a 1 1 0 0 0 1 1 h 4 a 1 1 0 0 0 1 -1 v -7 M -1 -2 v 4 M 1 -2 v 4"
