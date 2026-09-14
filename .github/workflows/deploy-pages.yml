@@ -1,0 +1,59 @@
+name: Déploiement GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Autorisations minimales requises par le déploiement Pages via Actions.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un seul déploiement à la fois ; les exécutions en cours ne sont pas annulées
+# afin de ne jamais laisser le site dans un état partiellement publié.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Compilation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installation des dépendances
+        run: npm ci
+
+      - name: Contrôle de types
+        run: npm run lint
+
+      - name: Compilation de production
+        run: npm run build
+
+      # La base est relative (vite.config.ts) : le site fonctionne aussi bien à
+      # la racine d'un domaine que dans le sous-chemin /<dépôt>/ de Pages.
+      - name: Désactivation de Jekyll
+        run: touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Publication
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

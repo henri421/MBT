@@ -11,16 +11,24 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['icon.svg'],
+        // L'enregistrement est réalisé par le composant PwaManager
+        // (virtual:pwa-register/react) : pas d'injection automatique pour
+        // éviter un double enregistrement du service worker.
+        injectRegister: null,
+        registerType: 'prompt',
+        includeAssets: ['icon.svg', 'icon-maskable.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'],
         manifest: {
+          id: './',
           name: 'Bielles & Tirants — Eurocode 2',
           short_name: 'MBT',
           description: "Calcul, vérification Eurocode 2 et optimisation d'énergie de Schlaich des modèles bielles-tirants (zones D) en 2D et 3D.",
           lang: 'fr',
+          dir: 'ltr',
+          categories: ['productivity', 'utilities', 'education'],
           start_url: './',
           scope: './',
           display: 'standalone',
+          display_override: ['standalone', 'minimal-ui'],
           orientation: 'any',
           background_color: '#ffffff',
           theme_color: '#0f172a',
@@ -32,22 +40,22 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: { cacheName: 'google-fonts-stylesheets' },
-            },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-webfonts',
-                cacheableResponse: { statuses: [0, 200] },
-                expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 },
-              },
-            },
-          ],
+          // Le bundle applicatif (three.js + React) dépasse la limite Workbox
+          // par défaut de 2 MiB : sans ce relèvement, le JS principal serait
+          // exclu du précache et l'application ne démarrerait pas hors-ligne.
+          maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+          cleanupOutdatedCaches: true,
+          navigateFallback: 'index.html',
+          // L'application est entièrement locale : aucune requête réseau
+          // externe n'est à mettre en cache à l'exécution.
+          runtimeCaching: [],
+        },
+        devOptions: {
+          // Permet de tester l'installation et le mode hors-ligne avec
+          // `npm run dev`, sans passer par un build de production.
+          enabled: true,
+          type: 'module',
+          navigateFallback: 'index.html',
         },
       }),
     ],
