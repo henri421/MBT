@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   MousePointer,
   PlusCircle,
@@ -91,6 +92,43 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presetDropdownRef = useRef<HTMLDivElement>(null);
   const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
+  // La barre d'outils défile horizontalement sur écran étroit ; un conteneur
+  // à défilement rogne ses descendants positionnés. Le menu des modèles est
+  // donc rendu dans un portail sur <body> et positionné d'après son bouton.
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const anchor = presetDropdownRef.current;
+    if (!anchor) return;
+    const MENU_WIDTH = 352; // w-88
+    const MARGIN = 8;
+    const rect = anchor.getBoundingClientRect();
+    const maxLeft = window.innerWidth - MENU_WIDTH - MARGIN;
+    setMenuPosition({
+      top: rect.bottom + 6,
+      left: Math.max(MARGIN, Math.min(rect.left, maxLeft)),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isPresetMenuOpen) {
+      setMenuPosition(null);
+      return;
+    }
+    updateMenuPosition();
+  }, [isPresetMenuOpen, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!isPresetMenuOpen) return;
+    const handler = () => updateMenuPosition();
+    window.addEventListener('resize', handler);
+    // Capture : suit aussi le défilement horizontal de la barre d'outils.
+    window.addEventListener('scroll', handler, true);
+    return () => {
+      window.removeEventListener('resize', handler);
+      window.removeEventListener('scroll', handler, true);
+    };
+  }, [isPresetMenuOpen, updateMenuPosition]);
 
   const currentPreset = PRESETS.find(p => p.id === selectedPresetId) || PRESETS[0];
 
@@ -154,7 +192,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
 
           {/* Floating Dropdown Menu with stable backdrop */}
-          {isPresetMenuOpen && (
+          {isPresetMenuOpen && menuPosition && createPortal(
             <>
               <div
                 className="fixed inset-0 z-40 bg-transparent"
@@ -163,7 +201,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <div
                 id="preset-menu-popover"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute left-0 top-full mt-1.5 w-88 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 text-xs overflow-hidden max-h-[440px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150"
+                style={{ top: menuPosition.top, left: menuPosition.left }}
+                className="fixed w-88 max-w-[calc(100vw-16px)] bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 text-xs overflow-hidden max-h-[min(440px,70vh)] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150"
               >
               {/* 2D Section */}
               <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 bg-slate-50/70 border-b border-slate-100">
@@ -247,8 +286,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 })}
               </div>
             </div>
-          </>
-        )}
+          </>,
+            document.body,
+          )}
         </div>
 
         {/* Undo / Redo Buttons */}
