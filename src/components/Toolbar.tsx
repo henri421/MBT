@@ -106,7 +106,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 select-none shadow-sm gap-2">
+    <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 select-none shadow-sm gap-2 overflow-x-auto overflow-y-hidden">
       {/* Hidden File Input for JSON Model Import */}
       <input
         ref={fileInputRef}
@@ -117,14 +117,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       />
 
       {/* Left: Brand & Preset Dropdown & Undo/Redo */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white shadow-sm text-xs font-mono">
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-8 h-8 shrink-0 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white shadow-sm text-xs font-mono">
             STM
           </div>
-          <div className="hidden lg:block">
-            <h1 className="text-xs font-bold text-slate-900 leading-tight">Bielles & Tirants</h1>
-            <p className="text-[10px] font-mono text-slate-500">Eurocode 2 • Zones D</p>
+          <div className="hidden lg:block whitespace-nowrap">
+            <h1 className="text-xs font-bold text-slate-900 leading-tight">Bielles &amp; Tirants</h1>
+            <p className="text-[10px] font-mono text-slate-500 leading-tight">Eurocode 2 • Zones D</p>
           </div>
         </div>
 
@@ -283,7 +283,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* Center: CAD Drawing Tools */}
-      <div className="flex items-center bg-slate-100 border border-slate-200 rounded-lg p-1 gap-1">
+      <div className="flex items-center bg-slate-100 border border-slate-200 rounded-lg p-1 gap-1 shrink-0">
         <button
           id="tool-select"
           onClick={() => onSelectTool('select')}
@@ -369,7 +369,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* Right: View Options & Import/Export & Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {/* 2D / 3D Mode Toggle */}
         <div className="flex bg-slate-100 border border-slate-200 rounded-lg p-0.5">
           <button
