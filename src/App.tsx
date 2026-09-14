@@ -17,6 +17,7 @@ import { Toolbar } from './components/Toolbar';
 import { PropertyPanel } from './components/PropertyPanel';
 import { OptimizationModal } from './components/OptimizationModal';
 import { ReportExportModal } from './components/ReportExportModal';
+import { PwaManager } from './components/PwaManager';
 import { generateStmSvg, downloadSvgFile } from './utils/svgExporter';
 import { downloadDxfFile } from './utils/dxfExporter';
 import { ShieldAlert, ChevronLeft, ChevronRight, Wrench, Info, Plus, ChevronDown, ChevronUp } from 'lucide-react';
@@ -90,7 +91,11 @@ export default function App() {
   // Modals
   const [isOptimizerOpen, setIsOptimizerOpen] = useState<boolean>(false);
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState<boolean>(false);
+  // Sur écran étroit (application installée sur téléphone), le panneau
+  // occuperait toute la largeur : il démarre replié au profit du canevas.
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
   const [showInstabilityDetails, setShowInstabilityDetails] = useState<boolean>(false);
 
   // Auto-stabilisation pour treillis sous-contraint ou appui libre
@@ -455,7 +460,7 @@ export default function App() {
   }, [members, solverResult]);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-white text-slate-900 overflow-hidden select-none font-sans">
+    <div className="app-shell flex flex-col bg-white text-slate-900 overflow-hidden select-none font-sans">
       {/* Top Application Toolbar */}
       <Toolbar
         activeTool={activeTool}
@@ -530,7 +535,7 @@ export default function App() {
           )}
 
           {/* Floating Model Description Banner */}
-          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur border border-slate-200 rounded-lg px-3 py-2 max-w-sm pointer-events-none shadow-sm z-10">
+          <div className="hidden md:block absolute top-3 left-3 bg-white/90 backdrop-blur border border-slate-200 rounded-lg px-3 py-2 max-w-sm pointer-events-none shadow-sm z-10">
             <h3 className="text-xs font-bold text-slate-900">
               {PRESETS.find(p => p.id === selectedPresetId)?.title || 'Modèle Personnalisé'}
             </h3>
@@ -623,7 +628,7 @@ export default function App() {
           <button
             id="btn-toggle-panel"
             onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
-            className="absolute top-1/2 -translate-y-1/2 right-0 z-20 bg-white hover:bg-slate-100 text-slate-600 border-l border-y border-slate-300 rounded-l-md p-1.5 shadow-md transition-transform"
+            className="absolute top-1/2 -translate-y-1/2 right-0 z-30 bg-white hover:bg-slate-100 text-slate-600 border-l border-y border-slate-300 rounded-l-md p-1.5 shadow-md transition-transform"
             title={isPanelCollapsed ? "Afficher les propriétés et aciers" : "Masquer le panneau"}
           >
             {isPanelCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -632,36 +637,38 @@ export default function App() {
 
         {/* Right Property & Material Inspector Panel */}
         {!isPanelCollapsed && (
-          <PropertyPanel
-            selectedPresetId={selectedPresetId}
-            selectedNodeId={selectedNodeId}
-            selectedMemberId={selectedMemberId}
-            nodes={nodes}
-            members={members}
-            concreteOutline={concreteOutline}
-            concreteMat={concreteMat}
-            steelMat={steelMat}
-            solverResult={solverResult}
-            onSelectNode={setSelectedNodeId}
-            onSelectMember={setSelectedMemberId}
-            onUpdateNode={handleUpdateNode}
-            onAddNode={handleAddNode}
-            onDeleteNode={handleDeleteNode}
-            onUpdateMember={handleUpdateMember}
-            onAddMember={handleAddMember}
-            onDeleteMember={handleDeleteMember}
-            onUpdateConcreteMat={setConcreteMat}
-            onUpdateSteelMat={setSteelMat}
-            onUpdateConcreteOutline={setConcreteOutline}
-          />
+          <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-2xl md:static md:z-auto md:shadow-none">
+            <PropertyPanel
+              selectedPresetId={selectedPresetId}
+              selectedNodeId={selectedNodeId}
+              selectedMemberId={selectedMemberId}
+              nodes={nodes}
+              members={members}
+              concreteOutline={concreteOutline}
+              concreteMat={concreteMat}
+              steelMat={steelMat}
+              solverResult={solverResult}
+              onSelectNode={setSelectedNodeId}
+              onSelectMember={setSelectedMemberId}
+              onUpdateNode={handleUpdateNode}
+              onAddNode={handleAddNode}
+              onDeleteNode={handleDeleteNode}
+              onUpdateMember={handleUpdateMember}
+              onAddMember={handleAddMember}
+              onDeleteMember={handleDeleteMember}
+              onUpdateConcreteMat={setConcreteMat}
+              onUpdateSteelMat={setSteelMat}
+              onUpdateConcreteOutline={setConcreteOutline}
+            />
+          </div>
         )}
       </div>
 
       {/* Engineering Bottom Status Bar */}
-      <footer className="h-8 bg-white border-t border-slate-200 px-4 flex items-center justify-between text-[11px] font-mono text-slate-600 z-10 shadow-sm">
-        <div className="flex items-center gap-4">
+      <footer className="h-8 shrink-0 bg-white border-t border-slate-200 px-4 flex items-center justify-between gap-4 text-[11px] font-mono text-slate-600 z-10 shadow-sm overflow-x-auto overflow-y-hidden whitespace-nowrap">
+        <div className="flex items-center gap-4 shrink-0">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span className="w-2 h-2 shrink-0 rounded-full bg-emerald-500"></span>
             <span className="text-slate-900 font-semibold">{nodes.length} Nœuds</span>
           </div>
           <div>
@@ -675,7 +682,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-5 shrink-0">
           <div>
             Énergie Schlaich : <span className="text-amber-700 font-bold">{solverResult.totalStrainEnergy.toFixed(1)} J</span>
           </div>
@@ -715,6 +722,9 @@ export default function App() {
         concreteOutline={concreteOutline}
         solverResult={solverResult}
       />
+
+      {/* Installation, mise à jour et état hors-ligne de la PWA */}
+      <PwaManager />
     </div>
   );
 }
