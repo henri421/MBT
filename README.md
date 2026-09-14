@@ -142,8 +142,51 @@ L'application démarre et est accessible sur `http://localhost:3000`.
 ### Compilation de production
 ```bash
 npm run build
+npm run preview   # sert dist/ sur http://localhost:3000
 ```
 Les fichiers compilés et optimisés sont générés dans le dossier `dist/`.
+
+### Application installable et fonctionnement hors-ligne (PWA)
+
+L'application est distribuée comme *Progressive Web App* : elle s'installe sur le
+poste de travail ou le téléphone et reste entièrement fonctionnelle sans
+connexion, ce qui est cohérent avec le caractère strictement local des calculs
+(aucune donnée de projet ne transite par le réseau).
+
+- **Installation** : un bouton *Installer l'application* apparaît dans
+  l'interface lorsque le navigateur le permet (Chrome, Edge, Chromium). Sur iOS,
+  la marche à suivre (*Partager* puis *Sur l'écran d'accueil*) est rappelée à
+  l'écran.
+- **Hors-ligne** : le service worker précache l'intégralité du bundle, des icônes
+  et des polices. Après une première visite, l'application démarre et calcule
+  sans réseau ; un bandeau signale l'état hors-ligne.
+- **Polices** : Plus Jakarta Sans et JetBrains Mono sont auto-hébergées
+  (`src/assets/fonts/`, woff2 variables). Aucune requête vers un CDN externe
+  n'est émise à l'exécution.
+- **Mises à jour** : le mode `prompt` est retenu plutôt qu'une mise à jour
+  silencieuse. Une nouvelle version déclenche une invite explicite, afin de ne
+  jamais recharger la page pendant l'édition d'un modèle.
+- **Vérification en développement** : le service worker est également actif avec
+  `npm run dev` (`devOptions.enabled`), l'installation et le mode hors-ligne
+  sont donc testables sans build de production.
+
+### Déploiement sur GitHub Pages
+
+Le workflow `.github/workflows/deploy-pages.yml` compile et publie le dossier
+`dist/` à chaque push sur `main`, ainsi qu'à la demande depuis l'onglet
+*Actions*. L'application devient alors accessible depuis n'importe quel
+navigateur à l'adresse `https://<utilisateur>.github.io/<dépôt>/`, et reste
+installable comme PWA depuis cette adresse.
+
+Activation, à effectuer une seule fois : dans *Settings* puis *Pages* du dépôt,
+choisir **GitHub Actions** comme source. Le premier déploiement se déclenche au
+push suivant sur `main`, ou manuellement via *Actions* puis *Déploiement GitHub
+Pages* puis *Run workflow*.
+
+La configuration Vite utilise une base relative (`base: './'`), si bien que le
+site fonctionne indifféremment à la racine d'un domaine ou dans le sous-chemin
+`/<dépôt>/` propre à Pages : les chemins des ressources, la portée du service
+worker et le `start_url` du manifeste s'y résolvent correctement.
 
 ---
 
