@@ -550,9 +550,13 @@ export function solveTruss(
     totalFz += n.fz || 0;
 
     const nf = nodeForces.get(n.id);
-    const sumFx = (n.fx || 0) + rx - (nf ? nf.fx : 0);
-    const sumFy = (n.fy || 0) + ry - (nf ? nf.fy : 0);
-    const sumFz = (n.fz || 0) + rz - (nf ? nf.fz : 0);
+    // nf cumule les efforts que les barres EXERCENT sur le noeud (+F.dir sur
+    // le noeud origine, -F.dir sur le noeud extremite) : l'equilibre s'ecrit
+    // charge + reaction + efforts des barres = 0. Le signe moins qui figurait
+    // ici rendait un residu egal au double de la resultante des barres.
+    const sumFx = (n.fx || 0) + rx + (nf ? nf.fx : 0);
+    const sumFy = (n.fy || 0) + ry + (nf ? nf.fy : 0);
+    const sumFz = (n.fz || 0) + rz + (nf ? nf.fz : 0);
     const residual = Math.sqrt(sumFx * sumFx + sumFy * sumFy + sumFz * sumFz);
 
     // Auto classify node type (CCC, CCT, CTT) based on incident member forces
@@ -621,11 +625,33 @@ export function solveTruss(
   };
 }
 
-// Gaussian elimination solver with partial pivoting
+/** Tolerance RELATIVE de pivot : rapportee au plus grand terme diagonal. */
+const PIVOT_RELATIF = 1e-10;
+/** Residu relatif admis sur K.U = F apres resolution. */
+const RESIDU_RELATIF = 1e-8;
+
+/**
+ * Elimination de Gauss avec pivot partiel.
+ *
+ * Deux gardes contre un mecanisme que les arrondis masquent :
+ * - le seuil de pivot est RELATIF a l'echelle de la matrice. Un seuil absolu
+ *   (1e-10 sur des raideurs de l'ordre de 1e6 kN/m) laissait passer les pivots
+ *   residuels d'une matrice singuliere en arithmetique exacte ;
+ * - le residu ||K.U - F|| est controle apres coup : une solution qui ne
+ *   verifie pas le systeme n'est pas une solution, meme si l'elimination est
+ *   allee a son terme.
+ * Sans elles, un treillis instable (sous-structure tenue par deux barres)
+ * rendait des efforts arbitraires, de plusieurs fois la charge, annonces comme
+ * un succes.
+ */
 function solveLinearSystem(A: number[][], b: number[]): number[] | null {
   const n = b.length;
   const M = A.map(row => [...row]);
   const x = [...b];
+
+  let echelle = 0;
+  for (let i = 0; i < n; i++) echelle = Math.max(echelle, Math.abs(A[i][i]));
+  const seuilPivot = Math.max(1e-10, PIVOT_RELATIF * echelle);
 
   for (let p = 0; p < n; p++) {
     // Find pivot
@@ -638,8 +664,8 @@ function solveLinearSystem(A: number[][], b: number[]): number[] | null {
       }
     }
 
-    if (maxVal < 1e-10) {
-      return null; // Singular matrix
+    if (maxVal < seuilPivot) {
+      return null; // Matrice singuliere (mecanisme)
     }
 
     // Swap rows
@@ -671,6 +697,19 @@ function solveLinearSystem(A: number[][], b: number[]): number[] | null {
       sum += M[i][j] * res[j];
     }
     res[i] = (x[i] - sum) / M[i][i];
+  }
+
+  // Controle a posteriori : K.U doit rendre F.
+  let normeF = 0;
+  let normeR = 0;
+  for (let i = 0; i < n; i++) {
+    let ku = 0;
+    for (let j = 0; j < n; j++) ku += A[i][j] * res[j];
+    normeF = Math.max(normeF, Math.abs(b[i]));
+    normeR = Math.max(normeR, Math.abs(ku - b[i]));
+  }
+  if (!res.every(Number.isFinite) || normeR > RESIDU_RELATIF * Math.max(normeF, 1)) {
+    return null;
   }
 
   return res;
