@@ -726,8 +726,7 @@ export const PRESETS: ModelPreset[] = [
         supportType: 'roller_x',
         bearingWidth: 0.30,
         nodeType: 'CCT',
-        isFixedInOpt: true,
-        isBlockedNearSupport: true
+        isFixedInOpt: true
       },
       {
         id: 'N_Bot_UnderLoad',
@@ -781,8 +780,8 @@ export const PRESETS: ModelPreset[] = [
       },
       {
         id: 'M_StrutDiagMid',
-        fromNodeId: 'N_Top_MidRight',
-        toNodeId: 'N_Bot_UnderLoad',
+        fromNodeId: 'N_Load',
+        toNodeId: 'N_Bot_MidRight',
         type: 'strut',
         hasTransverseTension: true,
         effectiveWidth: 0.22
@@ -823,6 +822,116 @@ export const PRESETS: ModelPreset[] = [
         type: 'tie',
         barDiameter: 25
       }
+    ]
+  },
+  {
+    id: 'dapped_end',
+    title: "About d'Entaille (Dapped-End Beam)",
+    subtitle: 'Redent d’appui : bielle de nez, tirant horizontal de nez et suspente verticale',
+    dimension: '2D',
+    description: 'Modèle classique d’about entaillé : la réaction du nez monte par une bielle inclinée jusqu’en tête de la suspente, que la suspente verticale reporte au pied de la poutre pleine ; un tirant horizontal de nez équilibre la bielle. La charge de 280 kN en travée rejoint l’appui droit par une bielle directe et le tirant inférieur. Appui du nez en rouleau : l’équilibre horizontal est assuré par les armatures, pas par l’appareil d’appui.',
+    concrete: {
+      name: 'Poutre à Redent',
+      thickness: 0.30,
+      points2D: [
+        [0.0, 0.40],
+        [0.50, 0.40],
+        [0.50, 0.0],
+        [2.20, 0.0],
+        [2.20, 1.20],
+        [0.0, 1.20]
+      ]
+    },
+    concreteMat: {
+      name: 'C30/37',
+      fck: 30,
+      gammaC: 1.5,
+      alphaCc: 1.0,
+      aggregateSize: 20
+    },
+    steelMat: {
+      name: 'B500B',
+      fyk: 500,
+      gammaS: 1.15,
+      Es: 200
+    },
+    nodes: [
+      { id: 'N_Nez', x: 0.25, y: 0.48, isSupport: true, supportType: 'roller_x', bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_SuspTete', x: 0.62, y: 1.08, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: false },
+      { id: 'N_SuspNez', x: 0.62, y: 0.48, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_SuspPied', x: 0.62, y: 0.12, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_Charge', x: 1.30, y: 1.08, fx: 0, fy: -280, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_BasCharge', x: 1.30, y: 0.12, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: false },
+      { id: 'N_AppuiDroit', x: 1.95, y: 0.12, isSupport: true, supportType: 'pin', bearingWidth: 0.25, nodeType: 'AUTO', isFixedInOpt: true, isBlockedNearSupport: true }
+    ],
+    members: [
+      { id: 'M_BielleNez', fromNodeId: 'N_Nez', toNodeId: 'N_SuspTete', type: 'strut' },
+      { id: 'M_TirantNez', fromNodeId: 'N_Nez', toNodeId: 'N_SuspNez', type: 'tie', barDiameter: 16 },
+      { id: 'M_SuspenteHaut', fromNodeId: 'N_SuspTete', toNodeId: 'N_SuspNez', type: 'tie', barDiameter: 12 },
+      { id: 'M_SuspenteBas', fromNodeId: 'N_SuspNez', toNodeId: 'N_SuspPied', type: 'tie', barDiameter: 12 },
+      { id: 'M_AncrageNez', fromNodeId: 'N_SuspNez', toNodeId: 'N_BasCharge', type: 'tie', barDiameter: 16 },
+      { id: 'M_MembrureSup', fromNodeId: 'N_SuspTete', toNodeId: 'N_Charge', type: 'strut' },
+      { id: 'M_BielleAme', fromNodeId: 'N_SuspPied', toNodeId: 'N_Charge', type: 'strut' },
+      { id: 'M_TirantInf1', fromNodeId: 'N_SuspPied', toNodeId: 'N_BasCharge', type: 'tie', barDiameter: 20 },
+      { id: 'M_MontantCharge', fromNodeId: 'N_Charge', toNodeId: 'N_BasCharge', type: 'strut' },
+      { id: 'M_BielleAppui', fromNodeId: 'N_Charge', toNodeId: 'N_AppuiDroit', type: 'strut' },
+      { id: 'M_TirantInf2', fromNodeId: 'N_BasCharge', toNodeId: 'N_AppuiDroit', type: 'tie', barDiameter: 20 }
+    ]
+  },
+  {
+    id: 'deep_beam_opening',
+    title: 'Poutre-Cloison avec Trémie (EC2 §9.7)',
+    subtitle: 'Contournement d’une trémie centrale par un linteau en arc, des trumeaux et un tirant inférieur',
+    dimension: '2D',
+    description: 'Poutre-cloison de 3,60 × 2,20 m avec une trémie centrale de 0,80 × 0,70 m (x de 1,40 à 2,20 m, y de 0,50 à 1,20 m ; non dessinée, le contour ne comportant qu’un polygone). La charge de 500 kN descend par deux bielles de linteau à 45° équilibrées par un tirant au-dessus de la trémie, puis par les bielles des trumeaux vers les appuis ; le tirant inférieur passe sous la trémie. Les barres sous la trémie, peu sollicitées, rigidifient la bande inférieure : sans elles, les trois panneaux formeraient un mécanisme.',
+    concrete: {
+      name: 'Poutre-Cloison 3.60 x 2.20 m, trémie centrale 0.80 x 0.70 m',
+      thickness: 0.30,
+      points2D: [
+        [0.0, 0.0],
+        [3.60, 0.0],
+        [3.60, 2.20],
+        [0.0, 2.20]
+      ]
+    },
+    concreteMat: {
+      name: 'C30/37',
+      fck: 30,
+      gammaC: 1.5,
+      alphaCc: 1.0,
+      aggregateSize: 20
+    },
+    steelMat: {
+      name: 'B500B',
+      fyk: 500,
+      gammaS: 1.15,
+      Es: 200
+    },
+    nodes: [
+      { id: 'N_AppuiG', x: 0.35, y: 0.16, isSupport: true, supportType: 'pin', bearingWidth: 0.30, nodeType: 'AUTO', isFixedInOpt: true, isBlockedNearSupport: true },
+      { id: 'N_AppuiD', x: 3.25, y: 0.16, isSupport: true, supportType: 'roller_x', bearingWidth: 0.30, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_Charge', x: 1.80, y: 2.05, fx: 0, fy: -500, bearingWidth: 0.40, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_LinteauG', x: 1.20, y: 1.45, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_LinteauD', x: 2.40, y: 1.45, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_TrumeauG', x: 1.20, y: 0.16, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_TrumeauD', x: 2.40, y: 0.16, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true },
+      { id: 'N_SousTremie', x: 1.80, y: 0.40, bearingWidth: 0.20, nodeType: 'AUTO', isFixedInOpt: true }
+    ],
+    members: [
+      { id: 'M_BielleLinteauG', fromNodeId: 'N_Charge', toNodeId: 'N_LinteauG', type: 'strut' },
+      { id: 'M_BielleLinteauD', fromNodeId: 'N_Charge', toNodeId: 'N_LinteauD', type: 'strut' },
+      { id: 'M_TirantLinteau', fromNodeId: 'N_LinteauG', toNodeId: 'N_LinteauD', type: 'tie', barDiameter: 16 },
+      { id: 'M_BielleTrumeauG', fromNodeId: 'N_LinteauG', toNodeId: 'N_AppuiG', type: 'strut' },
+      { id: 'M_BielleTrumeauD', fromNodeId: 'N_LinteauD', toNodeId: 'N_AppuiD', type: 'strut' },
+      { id: 'M_MontantG', fromNodeId: 'N_LinteauG', toNodeId: 'N_TrumeauG', type: 'tie', barDiameter: 10 },
+      { id: 'M_MontantD', fromNodeId: 'N_LinteauD', toNodeId: 'N_TrumeauD', type: 'tie', barDiameter: 10 },
+      { id: 'M_TirantInfG', fromNodeId: 'N_AppuiG', toNodeId: 'N_TrumeauG', type: 'tie', barDiameter: 20 },
+      { id: 'M_TirantInfMil', fromNodeId: 'N_TrumeauG', toNodeId: 'N_TrumeauD', type: 'tie', barDiameter: 20 },
+      { id: 'M_TirantInfD', fromNodeId: 'N_TrumeauD', toNodeId: 'N_AppuiD', type: 'tie', barDiameter: 20 },
+      { id: 'M_BandeG', fromNodeId: 'N_TrumeauG', toNodeId: 'N_SousTremie', type: 'strut' },
+      { id: 'M_BandeD', fromNodeId: 'N_SousTremie', toNodeId: 'N_TrumeauD', type: 'strut' },
+      { id: 'M_BandeAppuiG', fromNodeId: 'N_AppuiG', toNodeId: 'N_SousTremie', type: 'tie', barDiameter: 10 },
+      { id: 'M_BandeAppuiD', fromNodeId: 'N_AppuiD', toNodeId: 'N_SousTremie', type: 'tie', barDiameter: 10 }
     ]
   },
   {
@@ -1026,15 +1135,15 @@ export const PRESETS: ModelPreset[] = [
       },
       {
         id: 'M_Beam_DiagStrut1',
-        fromNodeId: 'N_Corner_Outer',
-        toNodeId: 'N_Beam_Mid_Bot',
+        fromNodeId: 'N_Corner_Inner',
+        toNodeId: 'N_Beam_Mid_Top',
         type: 'strut',
         effectiveWidth: 0.22
       },
       {
         id: 'M_Beam_DiagStrut2',
-        fromNodeId: 'N_Beam_Mid_Top',
-        toNodeId: 'N_Beam_Tip_Bot',
+        fromNodeId: 'N_Beam_Mid_Bot',
+        toNodeId: 'N_Beam_Tip_Top',
         type: 'strut',
         effectiveWidth: 0.22
       },

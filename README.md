@@ -83,10 +83,14 @@ L'application propose un algorithme de descente de gradient avec projection pour
 | **Nœud de portique (angle)** | 2D | Angle de cadre — bielle diagonale et tirants d'angle |
 | **Modèle libre** | 2D | Gabarit vide à compléter |
 
-Les modèles « console courte sur poutre », « about de poutre à redent » et
-« poutre-cloison à ouverture » ont été retirés le 2026-09-30 : c'étaient des
-mécanismes (treillis insuffisamment triangulés). Le premier était même résolu
-faux par l'ancien solveur, sans alerte. Ils reviendront une fois redessinés.
+| **About entaillé** | 2D | Bielle de nez, tirant horizontal de nez et suspente verticale |
+| **Poutre-cloison à trémie** | 2D | Linteau en arc avec tirant, bielles de trumeaux, tirant inférieur sous la trémie |
+
+Chaque modèle fourni est vérifié par les tests : il se résout, s'équilibre, et
+chaque barre travaille dans le rôle déclaré (bielle comprimée, tirant tendu).
+Le modèle « console courte sur poutre » a été retiré le 2026-09-30 : c'était un
+mécanisme, résolu faux sans alerte par l'ancien solveur. Les modèles « about
+entaillé » et « poutre-cloison à trémie » ont été redessinés le même jour.
 
 ---
 
