@@ -1,6 +1,9 @@
 # Bielles & Tirants — Eurocode 2 (NF EN 1992-1-1)
 > **Modélisation, calcul matriciel EF, vérification réglementaire Eurocode 2 et optimisation énergétique de Schlaich pour les zones de discontinuité (Zones D) en 2D et 3D.**
 
+> **Outil de référence de la suite pour le calcul bielles-tirants.** L'ancien
+> dépôt `STM` est archivé et renvoie ici.
+
 [![Eurocode 2](https://img.shields.io/badge/Norme-Eurocode%202%20(NF%20EN%201992--1--1)-blue.svg)](#r%C3%A9f%C3%A9rentiels-th%C3%A9oriques--eurocode-2)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
