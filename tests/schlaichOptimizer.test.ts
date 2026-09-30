@@ -194,3 +194,23 @@ describe('optimizeSchlaichEnergy — noeuds charges', () => {
     expect(position(r, 'C')).toMatchObject({ x: 2, y: 2 });
   });
 });
+
+describe('optimizeSchlaichEnergy — aucun noeud libre non charge', () => {
+  it('ne deplace jamais un noeud charge, meme faute d autre candidat', () => {
+    const { nodes, members } = triangle();
+    const contour: ConcreteOutline = { points2D: [[-1, -1], [5, -1], [5, 3], [-1, 3]], thickness: 0.3 };
+    const r = optimizeSchlaichEnergy(nodes, members, C30, B500, contour);
+    expect(r.iterations).toBe(0);
+    expect(r.optimizedNodes.find((n) => n.id === 'C')).toMatchObject({ x: 2, y: 2 });
+  });
+});
+
+describe('optimizeSchlaichEnergy — motif quand rien n est optimise', () => {
+  it('modele instable, ou aucun noeud libre : le motif est donne', () => {
+    const { nodes, members, contour } = chaineInstable();
+    expect(optimizeSchlaichEnergy(nodes, members, C30, B500, contour).message).toMatch(/instable/);
+    const t = triangle();
+    const c: ConcreteOutline = { points2D: [[-1, -1], [5, -1], [5, 3], [-1, 3]], thickness: 0.3 };
+    expect(optimizeSchlaichEnergy(t.nodes, t.members, C30, B500, c).message).toMatch(/Aucun nœud libre/);
+  });
+});

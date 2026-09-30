@@ -117,6 +117,12 @@ export const OptimizationModal: React.FC<OptimizationModalProps> = ({
             </p>
           </div>
 
+          {optResult?.message && (
+            <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-3 leading-relaxed">
+              {optResult.message}
+            </div>
+          )}
+
           {/* Results Comparison Grid */}
           {isRunning ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">

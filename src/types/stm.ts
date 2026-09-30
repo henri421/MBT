@@ -155,6 +155,8 @@ export interface OptimizationResult {
   iterations: number;
   optimizedNodes: STMNode[];
   steps: OptimizationStep[];
+  /** Pourquoi rien n'a ete optimise, le cas echeant. */
+  message?: string;
 }
 
 export interface ModelPreset {
