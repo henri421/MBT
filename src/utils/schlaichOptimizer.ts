@@ -70,6 +70,7 @@ export function optimizeSchlaichEnergy(
       iterations: 0,
       optimizedNodes: nodes,
       steps: [],
+      message: "Le modèle initial ne se résout pas (treillis instable) : il n'y a pas d'énergie à minimiser. Corriger la triangulation d'abord.",
     };
   }
   const initialEnergy = initialSol.totalStrainEnergy;
@@ -86,14 +87,9 @@ export function optimizeSchlaichEnergy(
     }
   });
 
-  // If no internal nodes found without loads, allow moving nodes that are not supports
-  if (movableNodeIds.length === 0) {
-    nodes.forEach(n => {
-      if (!n.isFixedInOpt && !n.isSupport && !n.isBlockedNearSupport) {
-        movableNodeIds.push(n.id);
-      }
-    });
-  }
+  // Pas de repli sur les noeuds charges : deplacer le point d'application
+  // d'une charge change le probleme pose, pas sa solution. Sans noeud libre
+  // non charge, il n'y a rien a optimiser.
 
   // Clone nodes
   let currentNodes: STMNode[] = nodes.map(n => ({ ...n }));
@@ -118,7 +114,8 @@ export function optimizeSchlaichEnergy(
       steelWeightReductionPercentage: 0,
       iterations: 0,
       optimizedNodes: nodes,
-      steps
+      steps,
+      message: "Aucun nœud libre et non chargé : appuis, points de charge et nœuds verrouillés ne sont jamais déplacés, il n'y a donc rien à optimiser."
     };
   }
 
