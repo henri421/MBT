@@ -76,10 +76,16 @@ export function calculateAnchorageLengths(
   isGoodBond: boolean = true
 ) {
   const fyd = fyk / gammaS; // ex: 434.78 MPa
-  // fctm = 0.30 * fck^(2/3)
-  const fctm = 0.30 * Math.pow(fck, 2 / 3);
-  // fctd = alpha_ct * fctm / gammaC
-  const fctd = (1.0 * fctm) / gammaC;
+  // §8.4.2(2) : f_ctd = alpha_ct f_ctk,0.05 / gamma_c, avec f_ctk,0.05 = 0,7 f_ctm
+  // (tableau 3.1). Prendre f_ctm au lieu du fractile 5 % surestimait f_bd de
+  // 43 % et raccourcissait d'autant les longueurs d'ancrage. La resistance est
+  // en outre limitee a celle du C60/75, faute de preuve d'une adherence accrue.
+  const fckAdh = Math.min(fck, 60);
+  const fctm = fckAdh <= 50
+    ? 0.30 * Math.pow(fckAdh, 2 / 3)
+    : 2.12 * Math.log(1 + (fckAdh + 8) / 10);
+  const fctk005 = 0.7 * fctm;
+  const fctd = (1.0 * fctk005) / gammaC;
 
   const eta1 = isGoodBond ? 1.0 : 0.7;
   const eta2 = diameterMm <= 32 ? 1.0 : (132 - diameterMm) / 100;

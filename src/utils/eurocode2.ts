@@ -275,11 +275,13 @@ export function calculateSkinRebar(
   fyk: number = 500
 ): SkinRebarCalculation {
   const minRatio = 0.001; // EC2 9.7(1): 0.1% per face
-  const totalAreaM2 = bwM * heightM;
-  const asMinPerFaceM2 = totalAreaM2 * minRatio;
-  const asMinPerFaceCm2 = asMinPerFaceM2 * 10000;
+  // EC2 9.7(1), note : 0,1 % mais pas moins de 150 mm2/m par face et par
+  // direction. Sans ce plancher, une ame de moins de 150 mm recevait moins que
+  // le minimum.
+  const planchersCm2PerM = 1.5;
+  const asMinPerFaceCm2PerM = Math.max((bwM * 1.0 * minRatio) * 10000, planchersCm2PerM); // cm²/m per face
+  const asMinPerFaceCm2 = asMinPerFaceCm2PerM * heightM;
   const asMinTotalCm2 = asMinPerFaceCm2 * 2;
-  const asMinPerFaceCm2PerM = (bwM * 1.0 * minRatio) * 10000; // cm²/m per face
   const maxSpacingMm = Math.min(2 * bwM * 1000, 300);
 
   let suggestedMesh = '2x HA8 e=15 cm';
