@@ -35,6 +35,9 @@ jobs:
       - name: Contrôle de types
         run: npm run lint
 
+      - name: Tests
+        run: npm test
+
       - name: Compilation de production
         run: npm run build
 
