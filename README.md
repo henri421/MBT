@@ -72,13 +72,18 @@ L'application propose un algorithme de descente de gradient avec projection pour
 | Modèle | Dimension | Référence normative / Guide |
 |---|---|---|
 | **Console Courte sur Poteau** | 2D | Eurocode 2 §J.3 — Tirant principal supérieur + bielle inclinée directe |
-| **Console Courte sur Poutre (Suspension)** | 2D | EC2 §J.3 & Guide SETRA — Reprise indirecte par étriers verticaux de suspension |
 | **Semelle sur 2 Pieux** | 2D | Répartition bielle-tirant vers 2 pieux d'appui |
 | **Semelle sur 3 Pieux** | 3D | Méthode de Blévot — Cône spatial de 3 bielles et ceinture triangulaire fermée |
 | **Semelle sur 4 Pieux** | 3D | Tétraèdre spatial sur 4 pieux d'angle |
 | **Poutre-Cloison Standard** | 2D | Eurocode 2 §9.7 & CEB-FIP — Arc de décharge et tirant inférieur |
 | **Poutre-Cloison avec Excentricité** | 2D | Asymétrie de charge et répartition différentielle des bielles vers les appuis |
-| **About de Poutre à Redent** | 2D | Dapped-end beam — Étriers de suspension verticaux et tirant d'about |
+| **Nœud de portique (angle)** | 2D | Angle de cadre — bielle diagonale et tirants d'angle |
+| **Modèle libre** | 2D | Gabarit vide à compléter |
+
+Les modèles « console courte sur poutre », « about de poutre à redent » et
+« poutre-cloison à ouverture » ont été retirés le 2026-09-30 : c'étaient des
+mécanismes (treillis insuffisamment triangulés). Le premier était même résolu
+faux par l'ancien solveur, sans alerte. Ils reviendront une fois redessinés.
 
 ---
 
