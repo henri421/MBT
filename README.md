@@ -218,6 +218,9 @@ worker et le `start_url` du manifeste s'y résolvent correctement.
 
 ---
 
-## Licence & Auteur
-Développé pour les ingénieurs en calcul de structures et les passionnés de génie civil selon la norme européenne **EN 1992-1-1**.
-Distribué sous licence MIT.
+## Licence
+
+MIT — voir [LICENSE](LICENSE). Le logiciel est fourni « tel quel », **sans garantie
+d'aucune sorte**, expresse ou implicite. C'est une aide au calcul selon
+l'EN 1992-1-1 : les résultats relèvent de la responsabilité de l'ingénieur qui les
+emploie et doivent être vérifiés.
