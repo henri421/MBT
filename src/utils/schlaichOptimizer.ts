@@ -55,13 +55,32 @@ export function optimizeSchlaichEnergy(
 ): OptimizationResult {
   // 1. Compute initial energy
   const initialSol = solveTruss(nodes, members, concreteMat, steelMat, concreteOutline.thickness, dimension);
-  const initialEnergy = initialSol.totalStrainEnergy || 100;
+
+  // Un modele initial instable n'a pas d'energie. L'ancien code lui en
+  // pretait une (100 J) et annoncait ensuite un gain par rapport a cette
+  // valeur inventee : on n'optimise pas un modele qui ne se resout pas.
+  if (!initialSol.success) {
+    return {
+      initialEnergy: 0,
+      optimizedEnergy: 0,
+      reductionPercentage: 0,
+      initialSteelWeight: 0,
+      optimizedSteelWeight: 0,
+      steelWeightReductionPercentage: 0,
+      iterations: 0,
+      optimizedNodes: nodes,
+      steps: [],
+    };
+  }
+  const initialEnergy = initialSol.totalStrainEnergy;
 
   // 2. Identify movable nodes
   // A node is movable if it is not a support, not heavily loaded, and not explicitly marked fixed
   const movableNodeIds: string[] = [];
   nodes.forEach(n => {
-    const hasExternalLoad = Math.abs(n.fx || 0) > 0.1 || Math.abs(n.fy || 0) > 0.1 || Math.abs(n.fz || 0) > 0.1;
+    // Toute charge non nulle fixe le noeud : un seuil absolu (0,1 kN) laissait
+    // l'optimiseur deplacer le point d'application d'une charge faible.
+    const hasExternalLoad = (n.fx || 0) !== 0 || (n.fy || 0) !== 0 || (n.fz || 0) !== 0;
     if (!n.isFixedInOpt && !n.isSupport && !n.isBlockedNearSupport && !hasExternalLoad) {
       movableNodeIds.push(n.id);
     }
@@ -173,7 +192,10 @@ export function optimizeSchlaichEnergy(
         // Solve truss with candidate geometry
         const testSol = solveTruss(currentNodes, members, concreteMat, steelMat, concreteOutline.thickness, dimension);
 
-        if (testSol.success && testSol.totalStrainEnergy < minCandidateEnergy - 0.01) {
+        // Gain minimal RELATIF : un seuil absolu (0,01 J) figeait la geometrie
+        // des modeles faiblement charges, dont l'energie totale est inferieure
+        // au seuil, alors que l'optimum ne depend pas de l'intensite des charges.
+        if (testSol.success && testSol.totalStrainEnergy < minCandidateEnergy * (1 - 1e-6)) {
           minCandidateEnergy = testSol.totalStrainEnergy;
           bestDelta = [dx, dy, dz];
         }
