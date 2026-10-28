@@ -186,7 +186,7 @@ export function modifierChamp(
 // Rendu HTML
 // ---------------------------------------------------------------------------
 
-const LIBELLES_APPUI: readonly (readonly [string, string])[] = [
+export const LIBELLES_APPUI: readonly (readonly [string, string])[] = [
   ['', 'aucun'],
   ['pin', 'appui simple'],
   ['roller_x', 'rouleau x'],
