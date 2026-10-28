@@ -11,6 +11,7 @@ import {
   brancherEditeur,
   echapper,
   historique,
+  nombreAffiche,
   noteDeCalculHtml,
   ouvrirOuTelecharger,
   pousser,
@@ -21,12 +22,11 @@ import {
   type Outil,
   type Selection,
 } from 'aedificium-ui';
-import { PRESETS, generateStmDxf, optimizeSchlaichEnergy } from '../../src/index';
+import { PRESETS, generateStmDxf, optimizeSchlaichEnergy, type OptimizationResult } from '../../src/index';
 import {
   appliquerAction,
   calculer,
   grapheDuModele,
-  modeleAvecGraphe,
   modeleDepuisJson,
   modeleDepuisPrereglage,
   modeleEnJson,
@@ -79,20 +79,6 @@ const fichierJsonEl = parRole<HTMLInputElement>('fichier-json');
 
 // --- État -------------------------------------------------------------------
 
-interface ChampsMoteur {
-  noeuds: any[];
-  barres: any[];
-  beton: any;
-  materiauBeton: any;
-  acier: any;
-  dimension?: '2D' | '3D';
-}
-
-/** Les champs moteur du modèle, hors du contrat exposé par `modele.ts`. */
-function champsMoteur(m: ModeleMbt): ChampsMoteur {
-  return m as unknown as ChampsMoteur;
-}
-
 const premier = PRESETS[0];
 let hist = historique(premier ? modeleDepuisPrereglage(premier) : modeleParDefaut());
 let selection: Selection = null;
@@ -101,47 +87,30 @@ let dernierResultat: ReturnType<typeof calculer> | null = null;
 let mode3d = false;
 let instance3d: { detacher(): void } | null = null;
 
-const options = { ...OPTIONS_DESSIN } as unknown as OptionsDessin & Record<string, boolean>;
+/** Pas de la grille aimantee (m) quand l'option est cochee. */
+const PAS_GRILLE = 0.05;
+let grilleActive = true;
+const options: OptionsDessin = { ...OPTIONS_DESSIN };
 
-interface OptimisationAffichee {
-  initial: number;
-  final: number;
-  noeuds: { id: string; x: number; y: number }[] | null;
+/** Options du dessin courantes : la grille porte son pas, ou null. */
+function optionsDessin(): OptionsDessin {
+  return { ...options, selection, grille: grilleActive ? PAS_GRILLE : null };
 }
-let derniereOptimisation: OptimisationAffichee | null = null;
+
+let derniereOptimisation: OptimizationResult | null = null;
 
 const CLE_CARTOUCHE = 'mbt:cartouche';
-
-// --- Formatage --------------------------------------------------------------
-
-function fr(valeur: number, decimales = 1): string {
-  return valeur.toFixed(decimales).replace('.', ',');
-}
-
-function nombreDepuis(valeur: unknown): number {
-  return typeof valeur === 'number' && Number.isFinite(valeur) ? valeur : 0;
-}
-
-function nomPreset(p: unknown, i: number): string {
-  const o = p as { nom?: unknown; name?: unknown };
-  if (typeof o.nom === 'string') return o.nom;
-  if (typeof o.name === 'string') return o.name;
-  return `Modèle ${i + 1}`;
-}
 
 // --- Éditeur -----------------------------------------------------------------
 
 const editeur = brancherEditeur(zone, {
-  contexte: () => {
-    const contexte: Record<string, unknown> = {
-      vue: vueDuModele(hist.present, 640, 520),
-      outil,
-      graphe: grapheDuModele(hist.present),
-      pas: options.grille ? 0.05 : null,
-      tolerance: 0.05,
-    };
-    return contexte as unknown as ContexteEditeur;
-  },
+  contexte: (): ContexteEditeur => ({
+    vue: vueDuModele(hist.present, 640, 520),
+    outil,
+    graphe: grapheDuModele(hist.present),
+    pas: grilleActive ? PAS_GRILLE : null,
+    tolerancePx: 8,
+  }),
   surAction: (action) => traiterAction(action),
 });
 
@@ -165,7 +134,7 @@ function traiterAction(action: ActionEditeur): void {
   if (action.type === 'survol') {
     const p = action.point;
     const aimante = action.noeud ? ` · aimanté sur ${action.noeud}` : '';
-    statutEl.textContent = `x = ${fr(p.x, 2)} m · y = ${fr(p.y, 2)} m${aimante}`;
+    statutEl.textContent = `x = ${nombreAffiche(p.x)} m · y = ${nombreAffiche(p.y)} m${aimante}`;
     return;
   }
 
@@ -187,7 +156,7 @@ function etatDessin(): {
   const m = hist.present;
   const r = calculer(m);
   const vue = vueDuModele(m, 640, 520);
-  const dessin = dessinModele(m, r, vue, options);
+  const dessin = dessinModele(m, r, vue, optionsDessin());
   return { m, r, vue, dessin };
 }
 
@@ -393,8 +362,7 @@ function exporterSvg(): void {
 
 function exporterDxf(): void {
   const { m, r } = etatDessin();
-  const moteur = champsMoteur(m);
-  const dxf = generateStmDxf(moteur.noeuds, moteur.barres, moteur.beton, r, {
+  const dxf = generateStmDxf(m.noeuds, m.barres, m.beton, r, {
     modelTitle: m.nom,
     scaleToMm: true,
   });
@@ -440,75 +408,44 @@ function installerVoletOptimisation(): void {
     '<div data-role="resultat-optimisation"></div>';
 }
 
-function noeudsOptimises(valeur: unknown): { id: string; x: number; y: number }[] | null {
-  if (!Array.isArray(valeur)) return null;
-  const noeuds: { id: string; x: number; y: number }[] = [];
-  for (const n of valeur) {
-    if (!n || typeof n !== 'object') continue;
-    const o = n as { id?: unknown; x?: unknown; y?: unknown };
-    if (typeof o.id === 'string' && typeof o.x === 'number' && typeof o.y === 'number') {
-      noeuds.push({ id: o.id, x: o.x, y: o.y });
-    }
-  }
-  return noeuds.length > 0 ? noeuds : null;
-}
-
 function lancerOptimisation(): void {
   const conteneur = document.querySelector<HTMLElement>('[data-role="resultat-optimisation"]');
   const m = hist.present;
-  const moteur = champsMoteur(m);
   try {
-    const brut = optimizeSchlaichEnergy(
-      moteur.noeuds,
-      moteur.barres,
-      moteur.materiauBeton,
-      moteur.acier,
-      moteur.beton,
-      moteur.dimension ?? '2D',
-    ) as unknown as Record<string, unknown>;
-
-    const initial = nombreDepuis(brut.initialEnergy ?? brut.energieInitiale);
-    const final = nombreDepuis(brut.finalEnergy ?? brut.optimizedEnergy ?? brut.energieFinale);
-    const noeuds = noeudsOptimises(brut.optimizedNodes ?? brut.noeudsOptimises ?? brut.nodes ?? brut.noeuds);
-    const reduction = initial > 0 ? ((initial - final) / initial) * 100 : 0;
-    derniereOptimisation = { initial, final, noeuds };
-
-    const motif = [brut.motif, brut.reason, brut.message].find(
-      (v): v is string => typeof v === 'string',
-    );
+    const o = optimizeSchlaichEnergy(m.noeuds, m.barres, m.materiauBeton, m.acier, m.beton, m.dimension);
+    derniereOptimisation = o;
+    const deplaces = o.optimizedNodes.some((n) => {
+      const avant = m.noeuds.find((x) => x.id === n.id);
+      return avant !== undefined && (avant.x !== n.x || avant.y !== n.y || (avant.z ?? 0) !== (n.z ?? 0));
+    });
     if (conteneur) {
       conteneur.innerHTML =
         '<div class="resultat-optimisation">' +
-        `<p>Énergie : ${fr(initial)} → ${fr(final)} kN·m (${fr(reduction)} %)</p>` +
-        (motif ? `<p>${echapper(motif)}</p>` : '') +
+        `<p>Énergie de déformation : ${nombreAffiche(o.initialEnergy)} → ${nombreAffiche(o.optimizedEnergy)} J ` +
+        `(−${nombreAffiche(o.reductionPercentage, 1)} %), ${o.iterations} itérations.</p>` +
+        (o.message ? `<p>${echapper(o.message)}</p>` : '') +
         '<div class="boutons">' +
-        `<button type="button" data-action="optimiser-appliquer"${noeuds ? '' : ' disabled'}>Appliquer</button>` +
+        `<button type="button" data-action="optimiser-appliquer"${deplaces ? '' : ' disabled'}>Appliquer</button>` +
         '<button type="button" data-action="optimiser-fermer">Annuler</button>' +
         '</div></div>';
     }
   } catch (erreur) {
     derniereOptimisation = null;
     if (conteneur) {
-      conteneur.textContent = `Optimisation impossible : ${
-        erreur instanceof Error ? erreur.message : String(erreur)
-      }`;
+      conteneur.textContent = `Optimisation impossible : ${erreur instanceof Error ? erreur.message : String(erreur)}`;
     }
   }
 }
 
 function appliquerOptimisation(): void {
-  if (!derniereOptimisation?.noeuds) {
-    statutEl.textContent = 'Aucune position optimisée à appliquer.';
-    return;
-  }
-  const graphe = grapheDuModele(hist.present);
-  const positions = new Map<string, { id: string; x: number; y: number }>();
-  for (const n of derniereOptimisation.noeuds) positions.set(n.id, n);
-  const noeuds = graphe.noeuds.map((n) => {
+  if (derniereOptimisation === null) return;
+  const positions = new Map(derniereOptimisation.optimizedNodes.map((n) => [n.id, n]));
+  const m = hist.present;
+  const noeuds = m.noeuds.map((n) => {
     const p = positions.get(n.id);
-    return p ? { ...n, x: p.x, y: p.y } : n;
+    return p ? { ...n, x: p.x, y: p.y, ...(p.z === undefined ? {} : { z: p.z }) } : n;
   });
-  hist = pousser(hist, modeleAvecGraphe(hist.present, { ...graphe, noeuds }));
+  hist = pousser(hist, { ...m, noeuds });
   derniereOptimisation = null;
   const conteneur = document.querySelector<HTMLElement>('[data-role="resultat-optimisation"]');
   if (conteneur) conteneur.textContent = 'Positions optimisées appliquées.';
@@ -564,7 +501,8 @@ outilsEl.addEventListener('change', (ev) => {
   if (!(cible instanceof HTMLInputElement)) return;
   const option = cible.dataset.option;
   if (!option) return;
-  options[option] = cible.checked;
+  if (option === 'grille') grilleActive = cible.checked;
+  else if (option === 'angles' || option === 'cotes' || option === 'largeurs') options[option] = cible.checked;
   redessiner();
 });
 
@@ -616,17 +554,20 @@ window.addEventListener('keydown', (ev) => {
 
 // --- Démarrage ---------------------------------------------------------------
 
+// Les classes du dessin sont stylees par les memes regles que le SVG exporte.
+document.head.insertAdjacentHTML('beforeend', `<style>${STYLES_TRACE}</style>`);
 remplirSelecteur();
 chargerCartouche();
 outilsEl.querySelectorAll<HTMLInputElement>('[data-option]').forEach((el) => {
   const option = el.dataset.option;
-  if (option) options[option] = el.checked;
+  if (option === 'grille') grilleActive = el.checked;
+  else if (option === 'angles' || option === 'cotes' || option === 'largeurs') options[option] = el.checked;
 });
 installerVoletOptimisation();
 redessiner();
 
 function remplirSelecteur(): void {
   selectModele.innerHTML = PRESETS.map(
-    (p, i) => `<option value="${i}">${echapper(nomPreset(p, i))}</option>`,
+    (p, i) => `<option value="${i}">${echapper(p.title)}</option>`,
   ).join('');
 }
