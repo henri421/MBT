@@ -7,7 +7,7 @@ import {
   findCommercialRebarOptions,
   getBarAreaCm2,
   getLinearMassKgPerM,
-} from '../src/utils/rebarCalculator';
+} from '../src/rebarCalculator';
 
 describe('getBarAreaCm2 et getLinearMassKgPerM', () => {
   it('HA 20 : 3,1416 cm2 et 2,466 kg/m', () => {

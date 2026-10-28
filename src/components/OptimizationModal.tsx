@@ -6,8 +6,8 @@ import {
   SteelMaterial,
   ConcreteOutline,
   OptimizationResult
-} from '../types/stm';
-import { optimizeSchlaichEnergy } from '../utils/schlaichOptimizer';
+} from '../stm';
+import { optimizeSchlaichEnergy } from '../schlaichOptimizer';
 import { Sparkles, TrendingDown, ArrowRight, Check, X, ShieldCheck, Zap } from 'lucide-react';
 
 interface OptimizationModalProps {

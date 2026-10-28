@@ -1,4 +1,4 @@
-import {
+import type {
   STMNode,
   STMMember,
   ConcreteMaterial,
@@ -7,7 +7,7 @@ import {
   SolverMemberResult,
   SolverNodeResult,
   NodeType
-} from '../types/stm';
+} from './stm';
 import { checkEurocodeMember, checkEurocodeNode } from './eurocode2';
 
 export function solveTruss(

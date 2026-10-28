@@ -1,4 +1,4 @@
-import { ModelPreset } from '../types/stm';
+import type { ModelPreset } from './stm';
 
 export const PRESETS: ModelPreset[] = [
   {

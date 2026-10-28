@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { PRESETS } from '../src/utils/templates';
-import { solveTruss } from '../src/utils/matrixSolver';
+import { PRESETS } from '../src/templates';
+import { solveTruss } from '../src/matrixSolver';
 
 describe('PRESETS — chaque modele fourni se resout et s equilibre', () => {
   it('au moins un modele, identifiants uniques', () => {

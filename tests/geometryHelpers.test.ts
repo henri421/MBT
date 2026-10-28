@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildParametricConcrete, findBoundaryIntersection } from '../src/utils/geometryHelpers';
+import { buildParametricConcrete, findBoundaryIntersection } from '../src/geometryHelpers';
 
 const CARRE: [number, number][] = [
   [0, 0],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { STMMember, STMNode } from '../src/types/stm';
-import { solveTruss } from '../src/utils/matrixSolver';
+import type { STMMember, STMNode } from '../src/stm';
+import { solveTruss } from '../src/matrixSolver';
 import { B500, C30, triangle } from './fixtures';
 
 function effort(r: ReturnType<typeof solveTruss>, id: string): number {

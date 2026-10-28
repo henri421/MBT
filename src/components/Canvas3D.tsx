@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { STMNode, STMMember, ConcreteOutline, SolverResult } from '../types/stm';
-import { findBoundaryIntersection } from '../utils/geometryHelpers';
+import { STMNode, STMMember, ConcreteOutline, SolverResult } from '../stm';
+import { findBoundaryIntersection } from '../geometryHelpers';
 import { RotateCw, Eye, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface Canvas3DProps {

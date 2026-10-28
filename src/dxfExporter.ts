@@ -1,4 +1,4 @@
-import { STMNode, STMMember, ConcreteOutline, SolverResult } from '../types/stm';
+import type { STMNode, STMMember, ConcreteOutline, SolverResult } from './stm';
 
 /**
  * Generates an AutoCAD DXF (Release 12/2000 compatible ASCII format)

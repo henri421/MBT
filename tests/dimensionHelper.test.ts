@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ConcreteOutline, STMNode } from '../src/types/stm';
-import { calculateStmDimensions } from '../src/utils/dimensionHelper';
+import type { ConcreteOutline, STMNode } from '../src/stm';
+import { calculateStmDimensions } from '../src/dimensionHelper';
 
 const contour: ConcreteOutline = { points2D: [[0, 0], [3.2, 0], [3.2, 2], [0, 2]], thickness: 0.3 };
 
