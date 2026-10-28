@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="theme-color" content="#f7f7f6" />
+    <link rel="icon" href="./icone.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icone-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bielles et tirants — EN 1992-1-1</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <nav class="barre" aria-label="suite d'outils">
+      <span class="barre-nom">Aedificium &middot; Bielles et tirants</span>
+      <a class="barre-lien" href="https://henri421.github.io/WebAedificium/" target="_blank" rel="noopener">Suite Aedificium &#8599;</a>
+    </nav>
+
+    <header>
+      <h1>Bielles et tirants</h1>
+      <p class="sous-titre">Zones de discontinuité, EN 1992-1-1 §6.5 et annexe J</p>
+    </header>
+
+    <main>
+      <!-- ===== Colonne de saisie ===== -->
+      <section id="saisie" aria-label="saisie">
+        <fieldset>
+          <legend>Modèle</legend>
+          <label class="ligne"><span>Point de départ</span>
+            <select data-role="modele"></select>
+          </label>
+          <div data-role="champs-modele"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Nœuds</legend>
+          <div data-role="noeuds"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Barres</legend>
+          <div data-role="barres"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Élément choisi</legend>
+          <div data-role="element-choisi"></div>
+        </fieldset>
+      </section>
+
+      <!-- ===== Colonne du dessin ===== -->
+      <section id="dessin" aria-label="dessin">
+        <div class="outils" data-role="outils">
+          <button type="button" data-outil="selection" class="actif">Sélection</button>
+          <button type="button" data-outil="noeud">Nœud</button>
+          <button type="button" data-outil="barre">Barre</button>
+          <button type="button" data-outil="appui">Appui</button>
+          <button type="button" data-outil="charge">Charge</button>
+          <button type="button" data-outil="supprimer">Supprimer</button>
+          <span class="sep"></span>
+          <button type="button" data-action="annuler" title="Ctrl+Z">Annuler</button>
+          <button type="button" data-action="retablir" title="Ctrl+Y">Rétablir</button>
+          <span class="sep"></span>
+          <label><input type="checkbox" data-option="grille" checked /> grille 5 cm</label>
+          <label><input type="checkbox" data-option="angles" checked /> angles θ</label>
+          <label><input type="checkbox" data-option="cotes" /> cotes</label>
+          <label><input type="checkbox" data-option="largeurs" /> largeurs w</label>
+          <span class="sep"></span>
+          <button type="button" data-action="vue-2d" class="actif">2D</button>
+          <button type="button" data-action="vue-3d">3D</button>
+        </div>
+
+        <div class="dessin">
+          <svg data-role="zone" viewBox="0 0 640 520" role="img" aria-label="Dessin du modèle : bielles et tirants"></svg>
+          <div class="legende">
+            <span class="legende-bielle">- - - bielle (compression)</span>
+            <span class="legende-tirant">—— tirant (traction)</span>
+            <span>efforts en kN</span>
+          </div>
+          <div class="statut" data-role="statut"></div>
+        </div>
+
+        <div class="zone-3d" data-role="zone-3d" hidden></div>
+
+        <div class="volets" data-role="volets">
+          <details class="deriv">
+            <summary>Bielles (§6.5.2)</summary>
+            <div></div>
+          </details>
+          <details class="deriv">
+            <summary>Tirants (§6.5.3) et ancrages</summary>
+            <div></div>
+          </details>
+          <details class="deriv">
+            <summary>Nœuds (§6.5.4) et pressions localisées (§6.7)</summary>
+            <div></div>
+          </details>
+          <details class="deriv">
+            <summary>Équilibre et réactions d'appui</summary>
+            <div></div>
+          </details>
+          <details class="deriv">
+            <summary>Optimisation de Schlaich</summary>
+            <div></div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ===== Colonne des verdicts ===== -->
+      <section id="verdicts" aria-label="verdicts">
+        <div data-role="liste-verdicts"></div>
+
+        <fieldset class="sorties">
+          <legend>Sorties</legend>
+          <label class="ligne"><span>Projet</span><input data-role="projet" /></label>
+          <label class="ligne"><span>Élément</span><input data-role="element" placeholder="vide = nom du modèle" /></label>
+          <div class="boutons">
+            <button type="button" data-action="exporter-note">Note de calcul</button>
+            <button type="button" data-action="exporter-svg">Dessin (SVG)</button>
+            <button type="button" data-action="exporter-dxf">DXF</button>
+            <button type="button" data-action="exporter-csv">Résultats (CSV)</button>
+          </div>
+          <div class="boutons">
+            <button type="button" data-action="enregistrer-json">Enregistrer le modèle (JSON)</button>
+            <button type="button" data-action="ouvrir-json">Ouvrir un modèle…</button>
+            <input type="file" accept=".json,application/json" data-role="fichier-json" hidden />
+          </div>
+        </fieldset>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

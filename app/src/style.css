@@ -1,0 +1,571 @@
+:root {
+  /* ---- Châssis ---- */
+  --fond: #f7f7f6;            /* fond de page */
+  --surface: #ffffff;         /* cartes, panneaux, champs */
+  --surface-appui: #f2f1ec;   /* en-têtes de tableau, boutons au repos */
+  --texte: #1a1a1a;
+  --texte-doux: #4a4842;      /* notes, libellés de ligne, corps secondaire */
+  --texte-faible: #6a6862;    /* legend, sous-titres, surtitres */
+  --bordure: #c8c6c0;         /* filet structurant : cadres, champs, séparateurs */
+  --bordure-douce: #eceae4;   /* filet interne : lignes de liste, lignes de tableau */
+
+  /* ---- Interface ---- */
+  --accent: #1e5aa8;          /* focus, liens, état actif — jamais une couleur de sens */
+  --accent-doux: #eaf1f9;     /* fond d'un champ actif, surlignage de zone */
+
+  /* ---- Couleurs de sens ---- */
+  --compression: #2f5d8a;     /* bielle, béton comprimé */
+  --traction: #a8442a;        /* tirant, acier tendu */
+  --beton: #e7eaee;           /* aplat de matière dans les tracés */
+  --neutre: #9a978f;          /* barre à effort nul, repères de cotation */
+
+  /* ---- Verdicts : trois états, pas quatre ---- */
+  --ok: #1f6f3f;      --ok-fond: #eaf4ee;
+  --alerte: #8a6d00;  --alerte-fond: #fdf6e3;
+  --refus: #a52121;   --refus-fond: #f8ecec;
+
+  /* ---- Typographie ---- */
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ---- Rayons ---- */
+  --rayon: 4px;
+  --rayon-petit: 3px;
+
+  /* ---- Gabarit propre à l'outil ---- */
+  --libelle: 9rem;
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font: 14px/1.5 var(--sans);
+}
+
+/*
+ * La barre de la suite : le nom de l'outil à gauche, un seul lien vers le
+ * carrefour à droite.
+ */
+.barre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 1.25rem;
+  border-bottom: 1px solid var(--bordure);
+  background: var(--surface);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--texte-faible);
+}
+
+.barre a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.barre a:hover {
+  text-decoration: underline;
+}
+
+header {
+  padding: 1rem 1.25rem 0.5rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.sous-titre {
+  margin: 0.2rem 0 0;
+  color: var(--texte-doux);
+}
+
+/* Trois colonnes : saisie, dessin, verdicts. */
+main {
+  display: grid;
+  grid-template-columns: 25rem minmax(0, 1fr) 19rem;
+  gap: 1rem;
+  padding: 0.5rem 1.25rem 2rem;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+fieldset {
+  margin: 0 0 0.9rem;
+  min-width: 0;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  padding: 0.6rem 0.8rem 0.8rem;
+}
+
+legend {
+  padding: 0 0.3rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texte-faible);
+}
+
+label.ligne {
+  display: grid;
+  grid-template-columns: var(--libelle) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+
+label.ligne span {
+  color: var(--texte-doux);
+}
+
+input,
+select {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  background: var(--surface);
+  color: var(--texte);
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+th {
+  background: var(--surface-appui);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.25rem 0.35rem;
+  border-bottom: 1px solid var(--bordure);
+}
+
+td {
+  padding: 0.15rem 0.35rem;
+  border-bottom: 1px solid var(--bordure-douce);
+}
+
+td input,
+td select {
+  padding: 0.05rem 0.25rem;
+  font-size: 0.82rem;
+}
+
+td.num input {
+  width: 4.2rem;
+  text-align: right;
+  font-family: var(--mono);
+}
+
+tr.choisi td {
+  background: var(--accent-doux);
+}
+
+/* Les tableaux remplis par main.ts défilent au lieu de déborder. */
+[data-role='noeuds'],
+[data-role='barres'],
+.deriv div {
+  overflow-x: auto;
+}
+
+.empty {
+  color: var(--texte-faible);
+  font-size: 0.82rem;
+  margin: 0.3rem 0;
+}
+
+.pastille {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border-radius: var(--rayon-petit);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.p-c {
+  color: var(--compression);
+  border: 1px solid var(--compression);
+}
+
+.p-t {
+  color: var(--traction);
+  border: 1px solid var(--traction);
+}
+
+.actions-tableau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+button {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  background: var(--surface-appui);
+  color: var(--texte);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--texte-faible);
+}
+
+button.actif {
+  background: var(--accent-doux);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---- Colonne du dessin ---- */
+.outils {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--bordure);
+  border-bottom: 0;
+  border-radius: var(--rayon) var(--rayon) 0 0;
+  background: var(--surface);
+}
+
+.outils .sep {
+  width: 1px;
+  height: 1.4rem;
+  background: var(--bordure);
+  margin: 0 0.3rem;
+}
+
+.outils label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--texte-doux);
+}
+
+.outils label input {
+  width: auto;
+}
+
+.dessin {
+  border: 1px solid var(--bordure);
+  border-radius: 0 0 var(--rayon) var(--rayon);
+  background: var(--surface);
+}
+
+.dessin svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 40rem;
+  touch-action: none;
+}
+
+.legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  font-size: 0.8rem;
+  color: var(--texte-doux);
+  padding: 0.35rem 0.6rem;
+  border-top: 1px solid var(--bordure-douce);
+}
+
+.legende-bielle {
+  color: var(--compression);
+}
+
+.legende-tirant {
+  color: var(--traction);
+}
+
+.statut {
+  padding: 0.3rem 0.6rem;
+  border-top: 1px solid var(--bordure-douce);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--texte-faible);
+  min-height: 1.9rem;
+}
+
+.zone-3d {
+  margin-top: 0.6rem;
+  min-height: 24rem;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.zone-3d[hidden] {
+  display: none;
+}
+
+/* ---- Classes du dessin (SVG) ---- */
+.bielle {
+  fill: none;
+  stroke: var(--compression);
+  stroke-width: 4;
+  stroke-dasharray: 10 5;
+  stroke-linecap: round;
+}
+
+.tirant {
+  fill: none;
+  stroke: var(--traction);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.neutre {
+  fill: none;
+  stroke: var(--neutre);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 4;
+  stroke-linecap: round;
+}
+
+/* Élément sélectionné : liseré accentué, sans changer la couleur de sens. */
+.choisi {
+  stroke: var(--accent);
+}
+
+.bielle.choisi,
+.tirant.choisi,
+.neutre.choisi {
+  stroke: var(--accent);
+}
+
+.noeud,
+.noeud circle {
+  fill: var(--surface);
+  stroke: var(--texte);
+  stroke-width: 2;
+}
+
+.noeud.choisi,
+.noeud.choisi circle {
+  fill: var(--accent-doux);
+  stroke: var(--accent);
+}
+
+.noeud text {
+  fill: var(--texte);
+  stroke: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.effort {
+  fill: var(--texte-doux);
+  stroke: none;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.appui {
+  fill: none;
+  stroke: var(--texte);
+  stroke-width: 1.5;
+}
+
+.charge {
+  fill: none;
+  stroke: var(--texte);
+  stroke-width: 2;
+}
+
+.cote {
+  fill: var(--texte-faible);
+  stroke: var(--neutre);
+  stroke-width: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.angle {
+  fill: var(--alerte);
+  stroke: none;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* ---- Volets de détail ---- */
+.volets {
+  margin-top: 0.7rem;
+}
+
+details.deriv {
+  margin-top: 0.7rem;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+details.deriv summary {
+  cursor: pointer;
+  padding: 0.45rem 0.7rem;
+  font-weight: 600;
+}
+
+details.deriv > div {
+  padding: 0 0.7rem 0.7rem;
+}
+
+/* ---- Verdicts ---- */
+.verdict {
+  margin-bottom: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--bordure);
+  border-left-width: 4px;
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.verdict.ok {
+  border-left-color: var(--ok);
+}
+
+.verdict.alerte {
+  border-left-color: var(--alerte);
+}
+
+.verdict.refus {
+  border-left-color: var(--refus);
+}
+
+.verdict h3 {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.verdict .clause {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--texte-faible);
+}
+
+.verdict p {
+  margin: 0.2rem 0;
+  font-size: 0.82rem;
+  color: var(--texte-doux);
+}
+
+.verdict[data-element] {
+  cursor: pointer;
+}
+
+.jauge {
+  height: 0.45rem;
+  margin: 0.35rem 0 0.15rem;
+  border-radius: 2px;
+  background: var(--surface-appui);
+  overflow: hidden;
+}
+
+.jauge i {
+  display: block;
+  height: 100%;
+}
+
+.ok .jauge i {
+  background: var(--ok);
+}
+
+.alerte .jauge i {
+  background: var(--alerte);
+}
+
+.refus .jauge i {
+  background: var(--refus);
+}
+
+.taux {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.ok .taux {
+  color: var(--ok);
+}
+
+.alerte .taux {
+  color: var(--alerte);
+}
+
+.refus .taux {
+  color: var(--refus);
+}
+
+/* ---- Sorties ---- */
+.sorties .boutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+/* ---- Petits écrans : aucun débordement à 375 px ---- */
+@media (max-width: 600px) {
+  :root {
+    --libelle: 7rem;
+  }
+
+  header {
+    padding: 0.8rem 0.75rem 0.4rem;
+  }
+
+  main {
+    padding: 0.4rem 0.75rem 1.5rem;
+  }
+
+  .barre {
+    padding: 0.35rem 0.75rem;
+  }
+
+  .outils {
+    gap: 0.25rem;
+  }
+
+  .outils .sep {
+    display: none;
+  }
+}
