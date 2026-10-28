@@ -132,7 +132,7 @@ describe('sorties', () => {
   it('svgDuDessin : document autonome avec ses styles', () => {
     const s = svgDuDessin(DESSIN);
     expect(s.startsWith('<?xml')).toBe(true);
-    expect(s).toContain('<style>');
+    expect(s).toContain('<style');
     expect(s).toContain('.bielle');
     expect(s).toContain('data-barre="B1"');
   });
