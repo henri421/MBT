@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import type { STMMember, STMNode } from '../src/types/stm';
+import type { STMMember, STMNode } from '../src/stm';
 import {
   calculateSkinRebar,
   checkElsStress,
   checkEurocodeMember,
   checkEurocodeNode,
   checkStrutAngle,
-} from '../src/utils/eurocode2';
+} from '../src/eurocode2';
 import { B500, C30 } from './fixtures';
 
 const tirant: STMMember = { id: 't', fromNodeId: 'a', toNodeId: 'b', type: 'tie' };

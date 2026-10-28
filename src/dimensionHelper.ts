@@ -1,4 +1,4 @@
-import { ConcreteOutline, STMNode } from '../types/stm';
+import type { ConcreteOutline, STMNode } from './stm';
 
 export interface StmDimension {
   id: string;

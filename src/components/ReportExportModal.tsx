@@ -6,7 +6,7 @@ import {
   SteelMaterial,
   ConcreteOutline,
   SolverResult
-} from '../types/stm';
+} from '../stm';
 import {
   Printer,
   Download,
@@ -21,7 +21,7 @@ import {
   Layers,
   Info
 } from 'lucide-react';
-import { calculateSkinRebar, checkStrutAngle, checkElsStress } from '../utils/eurocode2';
+import { calculateSkinRebar, checkStrutAngle, checkElsStress } from '../eurocode2';
 
 interface ReportExportModalProps {
   isOpen: boolean;

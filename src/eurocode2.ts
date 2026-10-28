@@ -1,10 +1,10 @@
-import {
+import type {
   STMMember,
   STMNode,
   ConcreteMaterial,
   SteelMaterial,
   NodeType
-} from '../types/stm';
+} from './stm';
 import { calculateAnchorageLengths } from './rebarCalculator';
 
 export interface EurocodeMemberCheckResult {

@@ -5,9 +5,9 @@ import {
   ConcreteOutline,
   SolverResult,
   MemberType
-} from '../types/stm';
-import { findBoundaryIntersection } from '../utils/geometryHelpers';
-import { calculateStmDimensions } from '../utils/dimensionHelper';
+} from '../stm';
+import { findBoundaryIntersection } from '../geometryHelpers';
+import { calculateStmDimensions } from '../dimensionHelper';
 import { ZoomIn, ZoomOut, Maximize2, Trash2 } from 'lucide-react';
 
 interface Canvas2DProps {

@@ -8,9 +8,9 @@ import {
   DimensionMode,
   ModelPreset,
   MemberType
-} from './types/stm';
-import { PRESETS } from './utils/templates';
-import { solveTruss } from './utils/matrixSolver';
+} from './stm';
+import { PRESETS } from './templates';
+import { solveTruss } from './matrixSolver';
 import { Canvas2D } from './components/Canvas2D';
 import { Canvas3D } from './components/Canvas3D';
 import { Toolbar } from './components/Toolbar';
@@ -18,8 +18,8 @@ import { PropertyPanel } from './components/PropertyPanel';
 import { OptimizationModal } from './components/OptimizationModal';
 import { ReportExportModal } from './components/ReportExportModal';
 import { PwaManager } from './components/PwaManager';
-import { generateStmSvg, downloadSvgFile } from './utils/svgExporter';
-import { downloadDxfFile } from './utils/dxfExporter';
+import { generateStmSvg, downloadSvgFile } from './svgExporter';
+import { downloadDxfFile } from './dxfExporter';
 import { ShieldAlert, ChevronLeft, ChevronRight, Wrench, Info, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface HistorySnapshot {

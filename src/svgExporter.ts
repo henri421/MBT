@@ -4,14 +4,14 @@
  * avec cotations, efforts Fc,Ed et TEd, sections d'acier As, et cartouche d'ingénierie.
  */
 
-import {
+import type {
   STMNode,
   STMMember,
   ConcreteOutline,
   SolverResult,
   ConcreteMaterial,
   SteelMaterial
-} from '../types/stm';
+} from './stm';
 import { COMMERCIAL_DIAMETERS, getBarAreaCm2 } from './rebarCalculator';
 import { calculateStmDimensions } from './dimensionHelper';
 

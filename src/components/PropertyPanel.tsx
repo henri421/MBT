@@ -8,8 +8,8 @@ import {
   SolverResult,
   MemberType,
   NodeType
-} from '../types/stm';
-import { buildParametricConcrete } from '../utils/geometryHelpers';
+} from '../stm';
+import { buildParametricConcrete } from '../geometryHelpers';
 import {
   COMMERCIAL_DIAMETERS,
   getBarAreaCm2,
@@ -17,8 +17,8 @@ import {
   calculateAnchorageLengths,
   findCommercialRebarOptions,
   calculateSuspensionStirrups
-} from '../utils/rebarCalculator';
-import { calculateSkinRebar, checkStrutAngle, checkElsStress } from '../utils/eurocode2';
+} from '../rebarCalculator';
+import { calculateSkinRebar, checkStrutAngle, checkElsStress } from '../eurocode2';
 import { DirectNumberInput } from './DirectNumberInput';
 import {
   Layers,

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { solveTruss } from '../src/utils/matrixSolver';
-import { downloadDxfFile, generateStmDxf } from '../src/utils/dxfExporter';
-import { downloadSvgFile, generateStmSvg } from '../src/utils/svgExporter';
-import type { ConcreteOutline } from '../src/types/stm';
+import { solveTruss } from '../src/matrixSolver';
+import { downloadDxfFile, generateStmDxf } from '../src/dxfExporter';
+import { downloadSvgFile, generateStmSvg } from '../src/svgExporter';
+import type { ConcreteOutline } from '../src/stm';
 import { B500, C30, triangle } from './fixtures';
 
 const contour: ConcreteOutline = { points2D: [[-0.3, -0.3], [4.3, -0.3], [4.3, 2.3], [-0.3, 2.3]], thickness: 0.3 };

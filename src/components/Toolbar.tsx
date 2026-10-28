@@ -23,8 +23,8 @@ import {
   FileCode,
   Ruler
 } from 'lucide-react';
-import { DimensionMode, ModelPreset } from '../types/stm';
-import { PRESETS } from '../utils/templates';
+import { DimensionMode, ModelPreset } from '../stm';
+import { PRESETS } from '../templates';
 
 interface ToolbarProps {
   activeTool: 'select' | 'add_node' | 'add_member' | 'add_support' | 'add_load';

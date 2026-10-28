@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ConcreteOutline, STMMember, STMNode } from '../src/types/stm';
-import { isPointInPolygon, optimizeSchlaichEnergy } from '../src/utils/schlaichOptimizer';
+import type { ConcreteOutline, STMMember, STMNode } from '../src/stm';
+import { isPointInPolygon, optimizeSchlaichEnergy } from '../src/schlaichOptimizer';
 import { B500, C30, triangle } from './fixtures';
 
 const CARRE: [number, number][] = [

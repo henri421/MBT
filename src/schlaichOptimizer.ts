@@ -1,4 +1,4 @@
-import {
+import type {
   STMNode,
   STMMember,
   ConcreteMaterial,
@@ -6,7 +6,7 @@ import {
   OptimizationResult,
   OptimizationStep,
   ConcreteOutline
-} from '../types/stm';
+} from './stm';
 import { solveTruss } from './matrixSolver';
 
 // Helper to check if point is inside 2D polygon (ray-casting algorithm)

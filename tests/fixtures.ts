@@ -1,4 +1,4 @@
-import type { ConcreteMaterial, STMMember, STMNode, SteelMaterial } from '../src/types/stm';
+import type { ConcreteMaterial, STMMember, STMNode, SteelMaterial } from '../src/stm';
 
 /** C30/37, gamma_c = 1,5, alpha_cc = 1,0 : f_cd = 20 MPa, nu' = 0,88. */
 export const C30: ConcreteMaterial = { name: 'C30/37', fck: 30, gammaC: 1.5, alphaCc: 1.0, aggregateSize: 20 };
