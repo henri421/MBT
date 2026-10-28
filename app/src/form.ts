@@ -219,7 +219,7 @@ function attributs(cible: string, champ: string): string {
 
 function champNombreHtml(cible: string, champ: string, valeur: number | undefined): string {
   const texte = valeur === undefined ? '' : nombreAffiche(valeur);
-  return `<input type="number" step="any" ${attributs(cible, champ)} value="${echapper(texte)}">`;
+  return `<input type="text" inputmode="decimal" ${attributs(cible, champ)} value="${echapper(texte)}">`;
 }
 
 function champChoixHtml(

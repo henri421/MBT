@@ -44,8 +44,6 @@ export const STYLES_TRACE = `${JETONS}
 
 /**
  * Dessin de page transforme en document SVG autonome, styles inclus.
- * svgAutonome pose `<style type="text/css">` ; on retire l'attribut, inutile
- * en SVG et attendu sous la forme nue `<style>`.
  */
 export function svgDuDessin(dessin: string): string {
   return svgAutonome(dessin, STYLES_TRACE);
