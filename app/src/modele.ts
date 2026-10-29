@@ -25,6 +25,7 @@ import {
   type STMMember,
   type STMNode,
 } from '../../src/index';
+import { textes } from './textes';
 
 export interface ModeleMbt {
   nom: string;
@@ -225,11 +226,11 @@ export function modeleDepuisJson(texte: string): { modele: ModeleMbt } | { erreu
   try {
     o = JSON.parse(texte);
   } catch {
-    return { erreur: "Fichier illisible : ce n'est pas du JSON." };
+    return { erreur: textes().fichier.illisible };
   }
 
   if (!estObjet(o) || o.app !== 'CivilEngineering-STM') {
-    return { erreur: "Ce fichier n'est pas un modèle bielles-tirants." };
+    return { erreur: textes().fichier.pasUnModele };
   }
 
   const nodes = o.nodes;
@@ -239,7 +240,7 @@ export function modeleDepuisJson(texte: string): { modele: ModeleMbt } | { erreu
       (n) => estObjet(n) && typeof n.id === 'string' && Number.isFinite(n.x) && Number.isFinite(n.y),
     )
   ) {
-    return { erreur: 'Fichier incomplet : un nœud est mal décrit.' };
+    return { erreur: textes().fichier.noeud };
   }
 
   const idsNoeuds = new Set(nodes.map((n) => (n as Record<string, unknown>).id as string));
@@ -256,7 +257,7 @@ export function modeleDepuisJson(texte: string): { modele: ModeleMbt } | { erreu
         idsNoeuds.has(b.toNodeId),
     )
   ) {
-    return { erreur: 'Fichier incomplet : une barre relie un nœud absent.' };
+    return { erreur: textes().fichier.barre };
   }
 
   const contour = o.concreteOutline;
@@ -266,7 +267,7 @@ export function modeleDepuisJson(texte: string): { modele: ModeleMbt } | { erreu
     typeof contour.thickness !== 'number' ||
     !(contour.thickness > 0)
   ) {
-    return { erreur: 'Contour ou épaisseur du béton invalide.' };
+    return { erreur: textes().fichier.contour };
   }
 
   const beton = o.concreteMat;
@@ -280,7 +281,7 @@ export function modeleDepuisJson(texte: string): { modele: ModeleMbt } | { erreu
     !estPositif(acier.fyk) ||
     !estPositif(acier.gammaS)
   ) {
-    return { erreur: 'Fichier incomplet : un matériau est mal décrit.' };
+    return { erreur: textes().fichier.materiau };
   }
 
   return {

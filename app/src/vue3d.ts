@@ -12,6 +12,7 @@ import type { Selection } from 'aedificium-ui';
 import type { ConcreteOutline, STMMember, STMNode, SolverResult } from '../../src/index';
 import { findBoundaryIntersection } from '../../src/geometryHelpers';
 import type { ModeleMbt } from './modele';
+import { textes } from './textes';
 
 const COULEUR_FOND = 0xffffff;
 const COULEUR_BIELLE = 0x2f5d8a;
@@ -741,8 +742,8 @@ export function monterVue3d(
 
   const boutonBeton = creerBouton(
     'btn-3d-toggle-concrete',
-    'Volume Béton',
-    'Afficher/Masquer le volume de béton',
+    textes().vue3d.beton,
+    textes().vue3d.betonTitre,
   );
   boutonBeton.addEventListener('click', () => {
     volumeBeton = !volumeBeton;
@@ -752,16 +753,16 @@ export function monterVue3d(
     cadrerModele(true);
   });
 
-  const boutonZoomPlus = creerBouton('btn-3d-zoom-in', 'Zoom +', 'Zoomer (+)');
+  const boutonZoomPlus = creerBouton('btn-3d-zoom-in', 'Zoom +', textes().vue3d.zoomPlusTitre);
   boutonZoomPlus.addEventListener('click', () => zoomer(0.85));
 
-  const boutonZoomMoins = creerBouton('btn-3d-zoom-out', 'Zoom −', 'Dézoomer (-)');
+  const boutonZoomMoins = creerBouton('btn-3d-zoom-out', 'Zoom −', textes().vue3d.zoomMoinsTitre);
   boutonZoomMoins.addEventListener('click', () => zoomer(1.15));
 
   const boutonRotation = creerBouton(
     'btn-3d-autorotate',
-    'Rotation',
-    'Rotation automatique à 360°',
+    textes().vue3d.rotation,
+    textes().vue3d.rotationTitre,
   );
   boutonRotation.addEventListener('click', () => {
     rotationAuto = !rotationAuto;
@@ -771,8 +772,8 @@ export function monterVue3d(
 
   const boutonRecadrer = creerBouton(
     'btn-3d-reset-view',
-    'Recadrer',
-    'Recadrer la vue sur l’élément',
+    textes().vue3d.recadrer,
+    textes().vue3d.recadrerTitre,
   );
   boutonRecadrer.addEventListener('click', recadrer);
 

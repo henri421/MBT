@@ -7,6 +7,7 @@
 import { echapper, nombreAffiche, notationHtml, tauxAffiche } from 'aedificium-ui';
 import type { SolverResult } from '../../src/index';
 import type { ModeleMbt } from './modele';
+import { phrase, textes } from './textes';
 
 export type EtatVerdict = 'ok' | 'alerte' | 'refus';
 
@@ -44,15 +45,16 @@ export function verdictsDuCalcul(r: SolverResult): VerdictFamille[] {
   if (!r.success || !r.isStable) {
     return [{
       famille: 'equilibre',
-      titre: 'Équilibre',
+      titre: textes().verdicts.equilibre,
       clause: '',
       taux: null,
       element: null,
       etat: 'refus',
-      motif: r.message || "Treillis instable : le calcul n'a pas abouti.",
+      motif: r.message ? phrase(r.message) : textes().verdicts.instable,
     }];
   }
 
+  const tx = textes();
   const verdicts: VerdictFamille[] = [];
   const membres = [...r.memberResults.values()];
 
@@ -60,7 +62,7 @@ export function verdictsDuCalcul(r: SolverResult): VerdictFamille[] {
   if (bielles.length > 0) {
     const b = meilleur(bielles, (m) => m.utilizationRatio)!;
     verdicts.push({
-      famille: 'bielles', titre: 'Bielles', clause: '§6.5.2',
+      famille: 'bielles', titre: tx.verdicts.bielles, clause: tx.clauses.bielles,
       taux: b.utilizationRatio, element: b.memberId,
       etat: etatDeTaux(b.utilizationRatio), motif: b.memberId,
     });
@@ -70,7 +72,7 @@ export function verdictsDuCalcul(r: SolverResult): VerdictFamille[] {
   if (tirants.length > 0) {
     const t = meilleur(tirants, (m) => m.utilizationRatio)!;
     verdicts.push({
-      famille: 'tirants', titre: 'Tirants', clause: '§6.5.3',
+      famille: 'tirants', titre: tx.verdicts.tirants, clause: tx.clauses.tirants,
       taux: t.utilizationRatio, element: t.memberId,
       etat: etatDeTaux(t.utilizationRatio), motif: t.memberId,
     });
@@ -80,7 +82,7 @@ export function verdictsDuCalcul(r: SolverResult): VerdictFamille[] {
   if (noeuds.length > 0) {
     const n = meilleur(noeuds, (x) => x.bearingUtilization)!;
     verdicts.push({
-      famille: 'noeuds', titre: 'Nœuds', clause: '§6.5.4',
+      famille: 'noeuds', titre: tx.verdicts.noeuds, clause: tx.clauses.noeuds,
       taux: n.bearingUtilization, element: n.nodeId,
       etat: etatDeTaux(n.bearingUtilization), motif: n.nodeId,
     });
@@ -90,7 +92,7 @@ export function verdictsDuCalcul(r: SolverResult): VerdictFamille[] {
   if (pressions.length > 0) {
     const n = meilleur(pressions, (x) => x.localBearingUtilization as number)!;
     verdicts.push({
-      famille: 'pressions', titre: 'Pressions localisées', clause: '§6.7',
+      famille: 'pressions', titre: tx.verdicts.pressions, clause: tx.clauses.pressions,
       taux: n.localBearingUtilization as number, element: n.nodeId,
       etat: etatDeTaux(n.localBearingUtilization as number), motif: n.nodeId,
     });
@@ -99,10 +101,10 @@ export function verdictsDuCalcul(r: SolverResult): VerdictFamille[] {
   let residu = 0;
   for (const n of noeuds) residu = Math.max(residu, Math.abs(n.equilibriumResidual));
   verdicts.push({
-    famille: 'equilibre', titre: 'Équilibre', clause: '',
+    famille: 'equilibre', titre: tx.verdicts.equilibre, clause: '',
     taux: null, element: null,
     etat: residu <= 0.01 ? 'ok' : 'alerte',
-    motif: `Treillis stable, résidu ${nombreAffiche(residu)} kN`,
+    motif: tx.verdicts.stable(nombreAffiche(residu)),
   });
 
   return verdicts;
@@ -140,10 +142,11 @@ export function tableauBielles(m: ModeleMbt, r: SolverResult): Tableau {
       tauxAffiche(membre.utilizationRatio),
     ]);
   }
+  const t = textes();
   return {
-    titre: 'Bielles',
-    clause: '§6.5.2',
-    entetes: ['Barre', 'Nœuds', 'F_Ed (kN)', 'σ_Rd,max (MPa)', 'w requise (mm)', 'w (mm)', 'Taux'],
+    titre: t.verdicts.bielles,
+    clause: t.clauses.bielles,
+    entetes: [t.tableaux.barre, t.tableaux.noeuds, 'F_Ed (kN)', 'σ_Rd,max (MPa)', t.tableaux.wRequise, 'w (mm)', t.tableaux.taux],
     lignes,
   };
 }
@@ -159,15 +162,16 @@ export function tableauTirants(m: ModeleMbt, r: SolverResult): Tableau {
       nombreAffiche(Math.abs(membre.force)),
       nombreOuTiret(membre.requiredAs),
       nombreOuTiret(membre.providedAs),
-      membre.suggestedRebar ?? '—',
+      membre.suggestedRebar === undefined ? '—' : phrase(membre.suggestedRebar),
       nombreOuTiret(membre.anchorageLengthMm),
       tauxAffiche(membre.utilizationRatio),
     ]);
   }
+  const t = textes();
   return {
-    titre: 'Tirants',
-    clause: '§6.5.3',
-    entetes: ['Barre', 'Nœuds', 'F_Ed (kN)', 'A_s,req (cm²)', 'A_s (cm²)', 'Armatures', 'l_bd (mm)', 'Taux'],
+    titre: t.verdicts.tirants,
+    clause: t.clauses.tirants,
+    entetes: [t.tableaux.barre, t.tableaux.noeuds, 'F_Ed (kN)', 'A_s,req (cm²)', 'A_s (cm²)', t.tableaux.armatures, 'l_bd (mm)', t.tableaux.taux],
     lignes,
   };
 }
@@ -185,10 +189,11 @@ export function tableauNoeuds(m: ModeleMbt, r: SolverResult): Tableau {
       tauxAffiche(noeud.bearingUtilization),
     ]);
   }
+  const t = textes();
   return {
-    titre: 'Nœuds',
-    clause: '§6.5.4',
-    entetes: ['Nœud', 'Type', 'σ (MPa)', 'σ_Rd,max (MPa)', 'Taux'],
+    titre: t.verdicts.noeuds,
+    clause: t.clauses.noeuds,
+    entetes: [t.tableaux.noeud, t.tableaux.type, 'σ (MPa)', 'σ_Rd,max (MPa)', t.tableaux.taux],
     lignes,
   };
 }
@@ -204,9 +209,9 @@ export function tableauReactions(m: ModeleMbt, r: SolverResult): Tableau {
     if (en3d) ligne.push(nombreAffiche(noeud.rz));
     lignes.push(ligne);
   }
-  const entetes = ['Nœud', 'R_x (kN)', 'R_y (kN)'];
+  const entetes = [textes().tableaux.noeud, 'R_x (kN)', 'R_y (kN)'];
   if (en3d) entetes.push('R_z (kN)');
-  return { titre: "Réactions d'appui", clause: '', entetes, lignes };
+  return { titre: textes().tableaux.reactions, clause: '', entetes, lignes };
 }
 
 export function tableauHtml(t: Tableau): string {

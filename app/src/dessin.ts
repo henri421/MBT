@@ -12,6 +12,7 @@ import {
   type Selection,
   type Vue,
 } from 'aedificium-ui';
+import { phrase, textes } from './textes';
 import { calculateStmDimensions, type SolverResult } from '../../src/index';
 import type { ModeleMbt } from './modele';
 
@@ -173,7 +174,7 @@ export function dessinModele(
       parts.push(
         `<g data-cote="${echapper(d.id)}" class="cote">` +
           `<line x1="${px(e1.x)}" y1="${px(e1.y)}" x2="${px(e2.x)}" y2="${px(e2.y)}"/>` +
-          `<text x="${px(mid.x)}" y="${px(mid.y)}" text-anchor="middle">${echapper(d.label)}</text>` +
+          `<text x="${px(mid.x)}" y="${px(mid.y)}" text-anchor="middle">${echapper(phrase(d.label))}</text>` +
           `</g>`,
       );
     }
@@ -256,7 +257,7 @@ export function dessinModele(
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${o.largeur} ${o.hauteur}" ` +
-    `role="img" aria-label="${echapper(`Dessin du modele : ${m.nom}`)}">` +
+    `role="img" aria-label="${echapper(textes().dessin.aria(phrase(m.nom)))}">` +
     `${parts.join('')}</svg>`
   );
 }
