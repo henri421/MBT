@@ -9,8 +9,10 @@
 import {
   annuler,
   brancherEditeur,
+  definirLangue,
   echapper,
   historique,
+  langueDuDocument,
   nombreAffiche,
   noteDeCalculHtml,
   ouvrirOuTelecharger,
@@ -53,12 +55,15 @@ import {
 } from './vue';
 import { noteDuCalcul } from './note';
 import { STYLES_TRACE, nomDeFichier, resultatsCsv, svgDuDessin } from './export';
+import { phrase, textes } from './textes';
+
+definirLangue(langueDuDocument(document));
 
 // --- Accès au DOM -----------------------------------------------------------
 
 function parRole<T extends Element = HTMLElement>(role: string): T {
   const el = document.querySelector<T>(`[data-role="${role}"]`);
-  if (!el) throw new Error(`Élément [data-role="${role}"] introuvable dans la page.`);
+  if (!el) throw new Error(textes().messages.elementAbsent(role));
   return el;
 }
 
@@ -134,7 +139,7 @@ function traiterAction(action: ActionEditeur): void {
   }
   if (action.type === 'survol') {
     const p = action.point;
-    const aimante = action.noeud ? ` · aimanté sur ${action.noeud}` : '';
+    const aimante = action.noeud ? textes().page.aimante(action.noeud) : '';
     statutEl.textContent = `x = ${nombreAffiche(p.x)} m · y = ${nombreAffiche(p.y)} m${aimante}`;
     return;
   }
@@ -342,7 +347,7 @@ function executerAction(action: string): void {
 // --- Sorties ----------------------------------------------------------------
 
 function nomBase(): string {
-  return nomDeFichier(hist.present.nom);
+  return nomDeFichier(phrase(hist.present.nom));
 }
 
 function enregistrerJson(): void {
@@ -355,7 +360,7 @@ function exporterNote(): void {
   enregistrerCartouche();
   const cartouche = {
     projet: projetEl.value,
-    element: elementEl.value || m.nom,
+    element: elementEl.value || phrase(m.nom),
     date: new Date().toISOString().slice(0, 10),
   };
   const note = noteDuCalcul(m, r, cartouche, dessin);
@@ -370,7 +375,7 @@ function exporterSvg(): void {
 function exporterDxf(): void {
   const { m, r } = etatDessin();
   const dxf = generateStmDxf(m.noeuds, m.barres, m.beton, r, {
-    modelTitle: m.nom,
+    modelTitle: phrase(m.nom),
     scaleToMm: true,
   });
   telecharger(`${nomBase()}.dxf`, dxf, 'application/dxf');
@@ -409,9 +414,10 @@ function installerVoletOptimisation(): void {
   const volet = voletsEl.querySelectorAll('details')[4];
   const conteneur = volet?.querySelector('div');
   if (!conteneur) return;
+  const t = textes().page;
   conteneur.innerHTML =
-    '<p>Déplace les nœuds libres pour réduire l\'énergie du treillis.</p>' +
-    '<button type="button" data-action="optimiser">Optimiser (Schlaich)</button>' +
+    `<p>${echapper(t.optimisationIntro)}</p>` +
+    `<button type="button" data-action="optimiser">${echapper(t.optimiser)}</button>` +
     '<div data-role="resultat-optimisation"></div>';
 }
 
@@ -426,20 +432,20 @@ function lancerOptimisation(): void {
       return avant !== undefined && (avant.x !== n.x || avant.y !== n.y || (avant.z ?? 0) !== (n.z ?? 0));
     });
     if (conteneur) {
+      const t = textes().page;
       conteneur.innerHTML =
         '<div class="resultat-optimisation">' +
-        `<p>Énergie de déformation : ${nombreAffiche(o.initialEnergy)} → ${nombreAffiche(o.optimizedEnergy)} J ` +
-        `(−${nombreAffiche(o.reductionPercentage, 1)} %), ${o.iterations} itérations.</p>` +
-        (o.message ? `<p>${echapper(o.message)}</p>` : '') +
+        `<p>${echapper(t.energie(nombreAffiche(o.initialEnergy), nombreAffiche(o.optimizedEnergy), nombreAffiche(o.reductionPercentage, 1), o.iterations))}</p>` +
+        (o.message ? `<p>${echapper(phrase(o.message))}</p>` : '') +
         '<div class="boutons">' +
-        `<button type="button" data-action="optimiser-appliquer"${deplaces ? '' : ' disabled'}>Appliquer</button>` +
-        '<button type="button" data-action="optimiser-fermer">Annuler</button>' +
+        `<button type="button" data-action="optimiser-appliquer"${deplaces ? '' : ' disabled'}>${echapper(t.appliquer)}</button>` +
+        `<button type="button" data-action="optimiser-fermer">${echapper(t.annuler)}</button>` +
         '</div></div>';
     }
   } catch (erreur) {
     derniereOptimisation = null;
     if (conteneur) {
-      conteneur.textContent = `Optimisation impossible : ${erreur instanceof Error ? erreur.message : String(erreur)}`;
+      conteneur.textContent = textes().page.optimisationImpossible(phrase(erreur instanceof Error ? erreur.message : String(erreur)));
     }
   }
 }
@@ -455,7 +461,7 @@ function appliquerOptimisation(): void {
   hist = pousser(hist, { ...m, noeuds });
   derniereOptimisation = null;
   const conteneur = document.querySelector<HTMLElement>('[data-role="resultat-optimisation"]');
-  if (conteneur) conteneur.textContent = 'Positions optimisées appliquées.';
+  if (conteneur) conteneur.textContent = textes().page.appliquees;
   redessiner();
 }
 
@@ -575,7 +581,7 @@ redessiner();
 
 function remplirSelecteur(): void {
   selectModele.innerHTML = PRESETS.map(
-    (p, i) => `<option value="${i}">${echapper(p.title)}</option>`,
+    (p, i) => `<option value="${i}">${echapper(phrase(p.title))}</option>`,
   ).join('');
 }
 

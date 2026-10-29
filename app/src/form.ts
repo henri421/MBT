@@ -6,13 +6,17 @@
 
 import { echapper, lireNombre, nombreAffiche, type Selection } from 'aedificium-ui';
 import type { ModeleMbt } from './modele';
+import { textes } from './textes';
 
 export type Cible = { type: 'modele' } | { type: 'noeud'; id: string } | { type: 'barre'; id: string };
 
-const MSG_NOMBRE = 'Valeur numérique attendue.';
-const MSG_POSITIF = 'Valeur strictement positive attendue.';
-const MSG_CHOIX = 'Choix inconnu.';
-const MSG_CHAMP = 'Champ inconnu.';
+// Lus au moment de l'appel : la langue est fixee apres le chargement.
+const msg = {
+  get nombre(): string { return textes().saisie.nombre; },
+  get positif(): string { return textes().saisie.positif; },
+  get choix(): string { return textes().saisie.choix; },
+  get champ(): string { return textes().saisie.champ; },
+};
 
 const APPUIS: readonly string[] = ['', 'pin', 'roller_x', 'roller_y', 'roller_z', 'fixed_3d'];
 const TYPES_NOEUD: readonly string[] = ['AUTO', 'CCC', 'CCT', 'CTT'];
@@ -30,18 +34,18 @@ function estVide(texte: string): boolean {
 /** Lit un nombre ; `obligatoire` interdit le vide, `positif` interdit ≤ 0. */
 function lireChampNombre(texte: string, obligatoire: boolean, positif: boolean): LectureNombre {
   if (estVide(texte)) {
-    return obligatoire ? { erreur: MSG_NOMBRE } : { defini: false };
+    return obligatoire ? { erreur: msg.nombre } : { defini: false };
   }
   const valeur = lireNombre(texte.trim());
-  if (valeur === null || !Number.isFinite(valeur)) return { erreur: MSG_NOMBRE };
-  if (positif && valeur <= 0) return { erreur: MSG_POSITIF };
+  if (valeur === null || !Number.isFinite(valeur)) return { erreur: msg.nombre };
+  if (positif && valeur <= 0) return { erreur: msg.positif };
   return { defini: true, valeur };
 }
 
 function ouiNon(texte: string): { valeur: boolean } | { erreur: string } {
   if (texte === 'oui') return { valeur: true };
   if (texte === 'non') return { valeur: false };
-  return { erreur: MSG_CHOIX };
+  return { erreur: msg.choix };
 }
 
 export function modifierChamp(
@@ -55,7 +59,7 @@ export function modifierChamp(
       case 'epaisseur': {
         const r = lireChampNombre(texte, true, true);
         if ('erreur' in r) return { erreur: r.erreur };
-        if (!r.defini) return { erreur: MSG_NOMBRE };
+        if (!r.defini) return { erreur: msg.nombre };
         const copie = structuredClone(m);
         copie.beton.thickness = r.valeur;
         return { modele: copie };
@@ -65,7 +69,7 @@ export function modifierChamp(
       case 'alphaCc': {
         const r = lireChampNombre(texte, true, true);
         if ('erreur' in r) return { erreur: r.erreur };
-        if (!r.defini) return { erreur: MSG_NOMBRE };
+        if (!r.defini) return { erreur: msg.nombre };
         const copie = structuredClone(m);
         copie.materiauBeton[champ] = r.valeur;
         return { modele: copie };
@@ -74,13 +78,13 @@ export function modifierChamp(
       case 'gammaS': {
         const r = lireChampNombre(texte, true, true);
         if ('erreur' in r) return { erreur: r.erreur };
-        if (!r.defini) return { erreur: MSG_NOMBRE };
+        if (!r.defini) return { erreur: msg.nombre };
         const copie = structuredClone(m);
         copie.acier[champ] = r.valeur;
         return { modele: copie };
       }
       default:
-        return { erreur: MSG_CHAMP };
+        return { erreur: msg.champ };
     }
   }
 
@@ -93,7 +97,7 @@ export function modifierChamp(
       case 'z': {
         const r = lireChampNombre(texte, true, false);
         if ('erreur' in r) return { erreur: r.erreur };
-        if (!r.defini) return { erreur: MSG_NOMBRE };
+        if (!r.defini) return { erreur: msg.nombre };
         const copie = structuredClone(m);
         copie.noeuds[index][champ] = r.valeur;
         return { modele: copie };
@@ -110,7 +114,7 @@ export function modifierChamp(
         return { modele: copie };
       }
       case 'appui': {
-        if (!APPUIS.includes(texte)) return { erreur: MSG_CHOIX };
+        if (!APPUIS.includes(texte)) return { erreur: msg.choix };
         const copie = structuredClone(m);
         const n = copie.noeuds[index];
         if (texte === '') {
@@ -132,7 +136,7 @@ export function modifierChamp(
         return { modele: copie };
       }
       case 'typeNoeud': {
-        if (!TYPES_NOEUD.includes(texte)) return { erreur: MSG_CHOIX };
+        if (!TYPES_NOEUD.includes(texte)) return { erreur: msg.choix };
         const copie = structuredClone(m);
         copie.noeuds[index].nodeType = texte as NonNullable<ModeleMbt['noeuds'][number]['nodeType']>;
         return { modele: copie };
@@ -145,7 +149,7 @@ export function modifierChamp(
         return { modele: copie };
       }
       default:
-        return { erreur: MSG_CHAMP };
+        return { erreur: msg.champ };
     }
   }
 
@@ -153,7 +157,7 @@ export function modifierChamp(
   if (index < 0) return { modele: m };
   switch (champ) {
     case 'type': {
-      if (!TYPES_BARRE.includes(texte)) return { erreur: MSG_CHOIX };
+      if (!TYPES_BARRE.includes(texte)) return { erreur: msg.choix };
       const copie = structuredClone(m);
       copie.barres[index].type = texte as ModeleMbt['barres'][number]['type'];
       return { modele: copie };
@@ -178,7 +182,7 @@ export function modifierChamp(
       return { modele: copie };
     }
     default:
-      return { erreur: MSG_CHAMP };
+      return { erreur: msg.champ };
   }
 }
 
@@ -186,14 +190,14 @@ export function modifierChamp(
 // Rendu HTML
 // ---------------------------------------------------------------------------
 
-export const LIBELLES_APPUI: readonly (readonly [string, string])[] = [
-  ['', 'aucun'],
-  ['pin', 'appui simple'],
-  ['roller_x', 'rouleau x'],
-  ['roller_y', 'rouleau y'],
-  ['roller_z', 'rouleau z'],
-  ['fixed_3d', 'encastrement 3D'],
-];
+/** Libelles des appuis, dans l'ordre de la liste. */
+export function libellesAppui(): readonly (readonly [string, string])[] {
+  return APPUIS.map((v) => [v, textes().saisie.appuis[v] ?? v] as const);
+}
+
+export function libelleAppui(v: string): string {
+  return textes().saisie.appuis[v] ?? v;
+}
 
 const LIBELLES_TYPE_NOEUD: readonly (readonly [string, string])[] = [
   ['AUTO', 'auto'],
@@ -202,16 +206,13 @@ const LIBELLES_TYPE_NOEUD: readonly (readonly [string, string])[] = [
   ['CTT', 'CTT'],
 ];
 
-const LIBELLES_TYPE_BARRE: readonly (readonly [string, string])[] = [
-  ['strut', 'bielle'],
-  ['tie', 'tirant'],
-  ['auto', 'auto'],
-];
+function libellesTypeBarre(): readonly (readonly [string, string])[] {
+  return TYPES_BARRE.map((v) => [v, textes().saisie.typesBarre[v] ?? v] as const);
+}
 
-const LIBELLES_OUI_NON: readonly (readonly [string, string])[] = [
-  ['oui', 'oui'],
-  ['non', 'non'],
-];
+function libellesOuiNon(): readonly (readonly [string, string])[] {
+  return [['oui', textes().saisie.oui], ['non', textes().saisie.non]];
+}
 
 function attributs(cible: string, champ: string): string {
   return `data-cible="${echapper(cible)}" data-champ="${echapper(champ)}"`;
@@ -260,7 +261,7 @@ export function tableNoeudsHtml(m: ModeleMbt, s: Selection): string {
       cellules.push(`<td>${champNombreHtml(cible, 'fy', n.fy)}</td>`);
       if (troisD) cellules.push(`<td>${champNombreHtml(cible, 'fz', n.fz)}</td>`);
       cellules.push(
-        `<td>${champChoixHtml(cible, 'appui', LIBELLES_APPUI, n.supportType ?? '')}</td>`,
+        `<td>${champChoixHtml(cible, 'appui', libellesAppui(), n.supportType ?? '')}</td>`,
       );
       return `<tr data-noeud="${echapper(n.id)}"${classeChoisi(s, 'noeud', n.id)}>${cellules.join('')}</tr>`;
     })
@@ -270,7 +271,7 @@ export function tableNoeudsHtml(m: ModeleMbt, s: Selection): string {
 
 function detailBarre(b: ModeleMbt['barres'][number]): string {
   if (b.type === 'tie' && b.barDiameter !== undefined) {
-    return `HA ${nombreAffiche(b.barDiameter)}`;
+    return textes().saisie.barreHa(nombreAffiche(b.barDiameter));
   }
   if (b.type === 'strut' && b.effectiveWidth !== undefined) {
     return `w = ${nombreAffiche(b.effectiveWidth)} m`;
@@ -285,7 +286,7 @@ export function tableBarresHtml(m: ModeleMbt, s: Selection): string {
       const cellules = [
         `<td>${echapper(b.id)}</td>`,
         `<td>${echapper(b.fromNodeId)} → ${echapper(b.toNodeId)}</td>`,
-        `<td>${champChoixHtml(cible, 'type', LIBELLES_TYPE_BARRE, b.type)}</td>`,
+        `<td>${champChoixHtml(cible, 'type', libellesTypeBarre(), b.type)}</td>`,
         `<td>${echapper(detailBarre(b))}</td>`,
       ];
       return `<tr data-barre="${echapper(b.id)}"${classeChoisi(s, 'barre', b.id)}>${cellules.join('')}</tr>`;
@@ -300,37 +301,39 @@ export function elementChoisiHtml(m: ModeleMbt, s: Selection): string {
     const n = m.noeuds.find((x) => x.id === s.id);
     if (!n) return '';
     const cible = `noeud:${n.id}`;
+    const t = textes().saisie;
     const champs = [
-      ligne('Plaque (m)', champNombreHtml(cible, 'plaque', n.bearingWidth)),
+      ligne(t.plaque, champNombreHtml(cible, 'plaque', n.bearingWidth)),
       ligne(
-        'Type de nœud',
+        t.typeNoeud,
         champChoixHtml(cible, 'typeNoeud', LIBELLES_TYPE_NOEUD, n.nodeType ?? 'AUTO'),
       ),
       ligne(
-        'Fixe (optimiseur)',
-        champChoixHtml(cible, 'fixe', LIBELLES_OUI_NON, n.isFixedInOpt ? 'oui' : 'non'),
+        t.fixe,
+        champChoixHtml(cible, 'fixe', libellesOuiNon(), n.isFixedInOpt ? 'oui' : 'non'),
       ),
     ].join('');
-    return `<fieldset><legend>Élément choisi : ${echapper(n.id)}</legend>${champs}</fieldset>`;
+    return `<fieldset><legend>${echapper(t.elementChoisi(n.id))}</legend>${champs}</fieldset>`;
   }
   const b = m.barres.find((x) => x.id === s.id);
   if (!b) return '';
   const cible = `barre:${b.id}`;
+  const t = textes().saisie;
   const champs = [
     ligne(
-      'Traction transversale',
-      champChoixHtml(cible, 'traction', LIBELLES_OUI_NON, b.hasTransverseTension ? 'oui' : 'non'),
+      t.traction,
+      champChoixHtml(cible, 'traction', libellesOuiNon(), b.hasTransverseTension ? 'oui' : 'non'),
     ),
-    ligne('Largeur (m)', champNombreHtml(cible, 'largeur', b.effectiveWidth)),
-    ligne('Épaisseur (m)', champNombreHtml(cible, 'epaisseur', b.thickness)),
-    ligne('Diamètre (mm)', champNombreHtml(cible, 'diametre', b.barDiameter)),
+    ligne(t.largeur, champNombreHtml(cible, 'largeur', b.effectiveWidth)),
+    ligne(t.epaisseur, champNombreHtml(cible, 'epaisseur', b.thickness)),
+    ligne(t.diametre, champNombreHtml(cible, 'diametre', b.barDiameter)),
   ].join('');
-  return `<fieldset><legend>Élément choisi : ${echapper(b.id)}</legend>${champs}</fieldset>`;
+  return `<fieldset><legend>${echapper(t.elementChoisi(b.id))}</legend>${champs}</fieldset>`;
 }
 
 export function champsModeleHtml(m: ModeleMbt): string {
   const champs = [
-    ligne('Épaisseur (m)', champNombreHtml('modele', 'epaisseur', m.beton.thickness)),
+    ligne(textes().saisie.epaisseur, champNombreHtml('modele', 'epaisseur', m.beton.thickness)),
     ligne('fck (MPa)', champNombreHtml('modele', 'fck', m.materiauBeton.fck)),
     ligne('γc', champNombreHtml('modele', 'gammaC', m.materiauBeton.gammaC)),
     ligne('αcc', champNombreHtml('modele', 'alphaCc', m.materiauBeton.alphaCc)),
