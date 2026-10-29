@@ -82,6 +82,7 @@ const fichierJsonEl = parRole<HTMLInputElement>('fichier-json');
 const premier = PRESETS[0];
 let hist = historique(premier ? modeleDepuisPrereglage(premier) : modeleParDefaut());
 let selection: Selection = null;
+let avantGlisse: ModeleMbt | null = null;
 let outil: Outil = 'selection';
 let dernierResultat: ReturnType<typeof calculer> | null = null;
 let mode3d = false;
@@ -138,8 +139,14 @@ function traiterAction(action: ActionEditeur): void {
     return;
   }
 
+  // Un glisse remplace le present a chaque deplacement ; au relachement, c'est
+  // le modele d'avant le glisse qui entre dans l'historique.
+  if (action.type === 'deplacer' && avantGlisse === null) avantGlisse = hist.present;
+  const depart = action.type === 'deplacer' && action.fin ? avantGlisse : null;
+  if (action.type === 'deplacer' && action.fin) avantGlisse = null;
   const resultat = appliquerAction(hist.present, action);
-  hist = resultat.historiser ? pousser(hist, resultat.modele) : { ...hist, present: resultat.modele };
+  if (resultat.historiser) hist = pousser(depart === null ? hist : { ...hist, present: depart }, resultat.modele);
+  else hist = { ...hist, present: resultat.modele };
   selection = resultat.selection === undefined ? selection : resultat.selection;
   synchroniserSelection();
   redessiner();
