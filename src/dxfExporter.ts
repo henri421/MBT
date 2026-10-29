@@ -284,29 +284,3 @@ export function generateStmDxf(
 
   return lines.join('\n');
 }
-
-/**
- * Utility to trigger browser file download of DXF
- */
-export function downloadDxfFile(
-  nodes: STMNode[],
-  members: STMMember[],
-  concrete: ConcreteOutline,
-  solverResult: SolverResult | null,
-  filename: string,
-  options?: { scaleToMm?: boolean; includeDimensions?: boolean }
-) {
-  const dxfContent = generateStmDxf(nodes, members, concrete, solverResult, {
-    modelTitle: filename.replace('.dxf', ''),
-    ...options
-  });
-  const blob = new Blob([dxfContent], { type: 'application/dxf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename.endsWith('.dxf') ? filename : `${filename}.dxf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}

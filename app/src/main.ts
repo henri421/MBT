@@ -571,3 +571,7 @@ function remplirSelecteur(): void {
     (p, i) => `<option value="${i}">${echapper(p.title)}</option>`,
   ).join('');
 }
+
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  void import('./pwa').then((m) => m.enregistrerServiceWorker());
+}
