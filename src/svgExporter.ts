@@ -407,18 +407,3 @@ export function generateStmSvg(
   ${titleBlockSvg}
 </svg>`;
 }
-
-/**
- * Déclenche le téléchargement direct du fichier SVG dans le navigateur
- */
-export function downloadSvgFile(svgContent: string, filename: string = 'schema-bielles-tirants.svg') {
-  const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}

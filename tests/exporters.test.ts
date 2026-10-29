@@ -1,9 +1,8 @@
-// @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { solveTruss } from '../src/matrixSolver';
-import { downloadDxfFile, generateStmDxf } from '../src/dxfExporter';
-import { downloadSvgFile, generateStmSvg } from '../src/svgExporter';
+import { generateStmDxf } from '../src/dxfExporter';
+import { generateStmSvg } from '../src/svgExporter';
 import type { ConcreteOutline } from '../src/stm';
 import { B500, C30, triangle } from './fixtures';
 
@@ -54,23 +53,5 @@ describe('generateStmSvg', () => {
 
   it('sans resultat de calcul', () => {
     expect(generateStmSvg(nodes, members, contour, null, C30, B500)).toMatch(/<\/svg>$/);
-  });
-});
-
-describe('telechargements', () => {
-  afterEach(() => vi.restoreAllMocks());
-
-  it('SVG et DXF passent par un lien temporaire, puis liberent l URL', () => {
-    const creer = vi.fn(() => 'blob:x');
-    const liberer = vi.fn();
-    Object.assign(URL, { createObjectURL: creer, revokeObjectURL: liberer });
-    const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    const { nodes, members } = triangle();
-    downloadSvgFile('<svg/>', 'a.svg');
-    downloadDxfFile(nodes, members, contour, null, 'plan');
-    expect(clic).toHaveBeenCalledTimes(2);
-    expect(creer).toHaveBeenCalledTimes(2);
-    expect(liberer).toHaveBeenCalledTimes(2);
-    expect(document.querySelectorAll('a').length).toBe(0);
   });
 });

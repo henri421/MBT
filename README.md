@@ -6,9 +6,12 @@
 
 [![Eurocode 2](https://img.shields.io/badge/Norme-Eurocode%202%20(NF%20EN%201992--1--1)-blue.svg)](#r%C3%A9f%C3%A9rentiels-th%C3%A9oriques--eurocode-2)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
 [![Three.js](https://img.shields.io/badge/Three.js-3D%20WebGL-black.svg)](https://threejs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v4-38bdf8.svg)](https://tailwindcss.com/)
+
+Application de la suite [Aedificium](https://henri421.github.io/WebAedificium/) :
+même barre, même mise en page en trois colonnes (saisie, dessin, verdicts) et
+même note de calcul que les autres outils, grâce à la bibliothèque commune
+`aedificium-ui`.
 
 ---
 
@@ -82,7 +85,6 @@ L'application propose un algorithme de descente de gradient avec projection pour
 | **Poutre-Cloison avec Excentricité** | 2D | Asymétrie de charge et répartition différentielle des bielles vers les appuis |
 | **Nœud de portique (angle)** | 2D | Angle de cadre — bielle diagonale et tirants d'angle |
 | **Modèle libre** | 2D | Gabarit vide à compléter |
-
 | **About entaillé** | 2D | Bielle de nez, tirant horizontal de nez et suspente verticale |
 | **Poutre-cloison à trémie** | 2D | Linteau en arc avec tirant, bielles de trumeaux, tirant inférieur sous la trémie |
 
@@ -96,22 +98,26 @@ entaillé » et « poutre-cloison à trémie » ont été redessinés le même j
 
 ## Fonctionnalités Clés
 
-- **Visualisation 2D Vectorielle (SVG dynamique)** :
+- **Saisie par le dessin et par les tableaux** : l'éditeur 2D commun de la
+  suite (outils sélection, nœud, barre, appui, charge, suppression, grille
+  magnétique) et les tableaux des nœuds et des barres restent synchronisés ;
+  un élément choisi dans l'un est surligné dans l'autre.
+- **Dessin 2D (SVG)** :
   - Bielles comprimées en **bleu** et tirants tendus en **rouge**.
-  - Affichage en pointillés de la **largeur efficace réelle des bielles** ($w_{eff}$).
-  - Tracé automatique des **secteurs angulaires $\theta$** entre bielles et tirants avec alerte si $\theta < 30^\circ$.
-  - Affichage des réactions d'appui réelles avec composantes horizontales et verticales ($R_x, R_y$).
-- **Visualisation 3D Interactive (Three.js WebGL)** :
-  - Rendu tridimensionnel des massifs de fondation et des volumes de béton extrudés.
-  - Orbite 360°, translation (pan), zoom molette et recadrage automatique sur l'élément.
-  - Sélection interactive par clic (raycasting) des barres et des nœuds.
-- **Paramétrage géométrique direct** :
-  - Dimensions réelles de coffrage modifiables par saisie numérique directe (portée, hauteur, épaisseur sans slider, position des charges).
-- **Historique & Sauvegarde** :
-  - Annulation / Rétablissement complets (**Ctrl+Z** / **Ctrl+Y**).
-  - Export et import de modèles complets en format JSON.
-- **Note de Calcul Réglementaire** :
-  - Modal d'audit détaillant le ratio d'utilisation $\eta$, les contraintes admissibles $\sigma_{Rd,max}$, et la section d'acier $A_s$.
+  - Réseau des **largeurs de bielles** ($w$) en option.
+  - **Secteurs angulaires $\theta$** entre bielles et tirants, alerte si $\theta < 30^\circ$.
+  - Cotes, efforts et réactions d'appui ($R_x, R_y$).
+- **Vue 3D (Three.js)**, chargée à la demande : massifs extrudés, orbite,
+  translation, zoom, sélection par clic des barres et des nœuds.
+- **Verdicts** : taux d'utilisation de chaque bielle (§6.5.2), tirant (§6.5.3)
+  et nœud (§6.5.4), pressions localisées (§6.7) et équilibre, avec le détail
+  des calculs dans des volets.
+- **Optimiseur de Schlaich** : propose de nouvelles positions des nœuds
+  intérieurs, avec l'énergie avant et après ; on applique ou on renonce.
+- **Historique et fichiers** : annulation et rétablissement (**Ctrl+Z** /
+  **Ctrl+Y**), modèle en JSON (**Ctrl+S** pour enregistrer).
+- **Sorties** : note de calcul de la suite (cartouche projet et élément),
+  dessin en SVG, plan DXF, résultats en CSV.
 
 ---
 
@@ -120,12 +126,13 @@ entaillé » et « poutre-cloison à trémie » ont été redessinés le même j
 | Raccourci / Action | Effet |
 |---|---|
 | `Ctrl + Z` (ou `Cmd + Z`) | Annuler la dernière action |
-| `Ctrl + Y` (ou `Cmd + Shift + Z`) | Rétablir l'action |
-| `Suppr` ou `Retour arrière` | Supprimer le nœud ou la barre sélectionnée |
-| `Clic gauche` (vue 3D) | Rotation orbitale de la vue |
-| `Clic droit` ou `Shift + Clic` (3D) | Déplacement panoramique (Pan) |
-| `Molette de la souris` | Zoom avant / arrière |
-| `Double clic` ou bouton `Cadre` | Recentrer et ajuster la vue sur le modèle |
+| `Ctrl + Y` (ou `Ctrl + Maj + Z`) | Rétablir l'action |
+| `Ctrl + S` | Enregistrer le modèle en JSON |
+| `Suppr` | Supprimer le nœud ou la barre choisie |
+| `Échap` | Abandonner la barre en cours de tracé |
+| `Clic gauche` glissé (vue 3D) | Rotation orbitale de la vue |
+| `Clic droit` glissé (vue 3D) | Déplacement panoramique |
+| `Molette de la souris` (vue 3D) | Zoom avant / arrière |
 
 ---
 
@@ -138,8 +145,8 @@ entaillé » et « poutre-cloison à trémie » ont été redessinés le même j
 ### Installation
 ```bash
 # Cloner le dépôt
-git clone https://github.com/votre-nom-d-utilisateur/bielles-et-tirants-eurocode2.git
-cd bielles-et-tirants-eurocode2
+git clone https://github.com/henri421/MBT.git
+cd MBT
 
 # Installer les dépendances
 npm install
@@ -165,16 +172,11 @@ poste de travail ou le téléphone et reste entièrement fonctionnelle sans
 connexion, ce qui est cohérent avec le caractère strictement local des calculs
 (aucune donnée de projet ne transite par le réseau).
 
-- **Installation** : un bouton *Installer l'application* apparaît dans
-  l'interface lorsque le navigateur le permet (Chrome, Edge, Chromium). Sur iOS,
-  la marche à suivre (*Partager* puis *Sur l'écran d'accueil*) est rappelée à
-  l'écran.
-- **Hors-ligne** : le service worker précache l'intégralité du bundle, des icônes
-  et des polices. Après une première visite, l'application démarre et calcule
-  sans réseau ; un bandeau signale l'état hors-ligne.
-- **Polices** : Plus Jakarta Sans et JetBrains Mono sont auto-hébergées
-  (`src/assets/fonts/`, woff2 variables). Aucune requête vers un CDN externe
-  n'est émise à l'exécution.
+- **Installation** : par le menu du navigateur (*Installer l'application* sous
+  Chrome et Edge, *Partager* puis *Sur l'écran d'accueil* sous iOS).
+- **Hors-ligne** : le service worker précache la page, ses scripts (dont le
+  module 3D) et les icônes. Après une première visite, l'application démarre
+  et calcule sans réseau. Aucune requête vers un CDN externe n'est émise.
 - **Mises à jour** : le mode `prompt` est retenu plutôt qu'une mise à jour
   silencieuse. Une nouvelle version déclenche une invite explicite, afin de ne
   jamais recharger la page pendant l'édition d'un modèle.
@@ -205,26 +207,34 @@ worker et le `start_url` du manifeste s'y résolvent correctement.
 ## Architecture du Code
 
 ```text
-├── index.html                   # Point d'entrée HTML, balises SEO et polices
-├── metadata.json                # Métadonnées de l'application
-├── package.json                 # Dépendances et scripts de build
-├── src/
-│   ├── main.tsx                 # Point d'entrée React
-│   ├── App.tsx                  # Composant racine, machine d'état et historique
-│   ├── types/
-│   │   └── stm.ts               # Types TypeScript (Nœuds, Barres, Matériaux, Solveur)
-│   ├── components/
-│   │   ├── Toolbar.tsx          # Barre d'outils, sélecteur de modèle et bascule 2D/3D
-│   │   ├── Canvas2D.tsx         # Moteur de rendu vectoriel SVG 2D interactif
-│   │   ├── Canvas3D.tsx         # Rendu spatial 3D WebGL (Three.js) avec raycasting
-│   │   ├── PropertyPanel.tsx    # Panneau d'inspection et saisie géométrique/matériaux
-│   │   ├── SchlaichOptimizer.tsx# Algorithme d'optimisation énergétique de Schlaich
-│   │   └── EurocodeReport.tsx   # Note de calcul de conformité Eurocode 2
-│   └── utils/
-│       ├── templates.ts         # Catalogue de préconfigurations 2D et 3D
-│       ├── matrixSolver.ts      # Solveur matriciel par éléments finis
-│       ├── eurocode2.ts         # Formulations Eurocode 2 (bielles, tirants, nœuds)
-│       └── geometryHelpers.ts   # Générateur paramétrique des contours de béton
+├── src/                         # Moteur, sans DOM
+│   ├── index.ts                 # Point d'entrée public du moteur
+│   ├── stm.ts                   # Types (nœuds, barres, matériaux, résultats)
+│   ├── matrixSolver.ts          # Solveur matriciel du treillis 2D et 3D
+│   ├── eurocode2.ts             # Vérifications EN 1992-1-1 (bielles, tirants, nœuds)
+│   ├── rebarCalculator.ts       # Choix des armatures des tirants
+│   ├── schlaichOptimizer.ts     # Optimisation énergétique de Schlaich
+│   ├── geometryHelpers.ts       # Contours paramétriques du béton
+│   ├── dimensionHelper.ts       # Cotes du dessin
+│   ├── dxfExporter.ts           # Plan DXF
+│   ├── svgExporter.ts           # Schéma SVG avec cartouche
+│   └── templates.ts             # Catalogue des modèles
+├── app/                         # La page
+│   ├── index.html               # Trois colonnes : saisie, dessin, verdicts
+│   ├── public/                  # Icônes de la PWA
+│   └── src/
+│       ├── main.ts              # Câblage : état, historique, éditeur, sorties
+│       ├── modele.ts            # Modèle, actions de l'éditeur, JSON, calcul
+│       ├── form.ts              # Champs du modèle, tableaux des nœuds et barres
+│       ├── dessin.ts            # Dessin SVG 2D
+│       ├── vue.ts               # Verdicts et tableaux des volets
+│       ├── vue3d.ts             # Vue 3D three.js, chargée à la demande
+│       ├── note.ts              # Note de calcul
+│       ├── export.ts            # SVG autonome, CSV, noms de fichier
+│       ├── pwa.ts               # Enregistrement du service worker
+│       └── style.css            # Jetons et mise en page de la suite
+├── tests/                       # Moteur (tests/*.test.ts) et page (tests/app/)
+├── vite.config.ts               # Racine app/, PWA, configuration de Vitest
 └── tsconfig.json                # Configuration TypeScript
 ```
 
