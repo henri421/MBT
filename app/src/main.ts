@@ -9,6 +9,7 @@
 import {
   annuler,
   brancherEditeur,
+  brancherFeuilles,
   definirLangue,
   echapper,
   historique,
@@ -20,7 +21,9 @@ import {
   retablir,
   telecharger,
   type ActionEditeur,
+  type BarreFeuilles,
   type ContexteEditeur,
+  type Json,
   type Outil,
   type Selection,
 } from 'aedificium-ui';
@@ -87,6 +90,12 @@ const fichierJsonEl = parRole<HTMLInputElement>('fichier-json');
 const premier = PRESETS[0];
 let hist = historique(premier ? modeleDepuisPrereglage(premier) : modeleParDefaut());
 let selection: Selection = null;
+/**
+ * Feuilles de calcul d'un projet de la suite (plateforme commune, aucun lien
+ * avec une autre app). Chaque trace signale la saisie ; la barre n'ecrit que
+ * si le modele a change.
+ */
+let barre: BarreFeuilles | null = null;
 let avantGlisse: ModeleMbt | null = null;
 let outil: Outil = 'selection';
 let dernierResultat: ReturnType<typeof calculer> | null = null;
@@ -196,6 +205,7 @@ function redessiner(): void {
   });
 
   if (mode3d) void monter3d();
+  barre?.signaler();
 }
 
 // --- Vue 3D chargée à la demande --------------------------------------------
@@ -577,6 +587,31 @@ outilsEl.querySelectorAll<HTMLInputElement>('[data-option]').forEach((el) => {
   else if (option === 'angles' || option === 'cotes' || option === 'largeurs') options[option] = el.checked;
 });
 installerVoletOptimisation();
+
+/** Modele en JSON de feuille : sans date d'export, pour ne pas changer a chaque trace. */
+const modeleEnFeuille = (): Json => JSON.parse(modeleEnJson(hist.present, '')) as Json;
+
+barre = brancherFeuilles({
+  app: 'MBT',
+  nomApp: document.querySelector('header h1')?.textContent ?? 'MBT',
+  conteneur: parRole<HTMLElement>('feuilles'),
+  lire: modeleEnFeuille,
+  charger: (d) => {
+    // Calcul cree depuis le hub : le modele affiche (premier prereglage) devient la feuille 1.
+    if (d === null) return redessiner();
+    const lu = modeleDepuisJson(JSON.stringify(d));
+    if ('erreur' in lu) {
+      statutEl.textContent = lu.erreur;
+      return;
+    }
+    hist = historique(lu.modele);
+    selection = null;
+    derniereOptimisation = null;
+    synchroniserSelection();
+    redessiner();
+  },
+});
+
 redessiner();
 
 function remplirSelecteur(): void {
