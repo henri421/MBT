@@ -20,6 +20,7 @@ import {
   tableauTirants,
   verdictsDuCalcul,
 } from './vue';
+import { VERSION_OUTIL } from './version';
 
 /** Hypotheses de la note, en francais (les tests les lisent). */
 export const HYPOTHESES: readonly string[] = textes().note.hypotheses;
@@ -142,6 +143,7 @@ export function noteDuCalcul(
 
   return {
     cartouche: {
+      version: VERSION_OUTIL,
       projet: cartouche.projet,
       element: cartouche.element.trim() || nom,
       date: cartouche.date,

@@ -11,6 +11,7 @@ import type { ModeleMbt } from '../../app/src/modele';
 import { tableauBielles, tableauNoeuds, tableauReactions, tableauTirants } from '../../app/src/vue';
 import { HYPOTHESES, noteDuCalcul } from '../../app/src/note';
 import { STYLES_TRACE, nomDeFichier, resultatsCsv, svgDuDessin } from '../../app/src/export';
+import { VERSION_OUTIL } from '../../app/src/version';
 
 const modele = (p: ModelPreset): ModeleMbt => ({
   nom: p.title, dimension: p.dimension, beton: p.concrete, materiauBeton: p.concreteMat, acier: p.steelMat, noeuds: p.nodes, barres: p.members,
@@ -29,7 +30,7 @@ const symboles = (els: ElementNote[] | undefined) => de(els, 'bloc').flatMap((b)
 
 describe('cartouche', () => {
   it('projet, element, date, norme, outil', () => {
-    expect(note.cartouche).toEqual({ ...CARTOUCHE, norme: 'EN 1992-1-1:2004, §6.5', outil: 'bielles et tirants' });
+    expect(note.cartouche).toEqual({ ...CARTOUCHE, version: VERSION_OUTIL, norme: 'EN 1992-1-1:2004, §6.5', outil: 'bielles et tirants' });
   });
 
   it('element vide : le nom du modele', () => {
