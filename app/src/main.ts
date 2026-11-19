@@ -15,7 +15,7 @@ import {
   historique,
   langueDuDocument,
   nombreAffiche,
-  noteDeCalculHtml,
+  noteDeCalculHtml, telechargerNotePdf,
   ouvrirOuTelecharger,
   pousser,
   retablir,
@@ -325,6 +325,9 @@ function executerAction(action: string): void {
     case 'exporter-note':
       exporterNote();
       break;
+    case 'exporter-note-pdf':
+      exporterNote(true);
+      break;
     case 'exporter-svg':
       exporterSvg();
       break;
@@ -365,7 +368,7 @@ function enregistrerJson(): void {
   telecharger(`${nomBase()}.json`, modeleEnJson(m, new Date().toISOString()), 'application/json');
 }
 
-function exporterNote(): void {
+function exporterNote(pdf = false): void {
   const { m, r, dessin } = etatDessin();
   enregistrerCartouche();
   const cartouche = {
@@ -373,8 +376,10 @@ function exporterNote(): void {
     element: elementEl.value || phrase(m.nom),
     date: new Date().toISOString().slice(0, 10),
   };
-  const note = noteDuCalcul(m, r, cartouche, dessin);
-  ouvrirOuTelecharger(`${nomBase()}-note.html`, noteDeCalculHtml(note, STYLES_TRACE));
+  const noteCalc = noteDuCalcul(m, r, cartouche, dessin);
+  // PDF construit au clic ; en cas d'echec, la note HTML prend le relais.
+  if (pdf) void telechargerNotePdf(`${nomBase()}-note.pdf`, noteCalc, STYLES_TRACE).catch(() => ouvrirOuTelecharger(`${nomBase()}-note.html`, noteDeCalculHtml(noteCalc, STYLES_TRACE)));
+  else ouvrirOuTelecharger(`${nomBase()}-note.html`, noteDeCalculHtml(noteCalc, STYLES_TRACE));
 }
 
 function exporterSvg(): void {
